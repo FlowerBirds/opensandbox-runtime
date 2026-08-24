@@ -15,10 +15,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Must include the registry prefix; without it, buildx falls back to Docker Hub.
-  # The owner part is lowercased because GitHub user/org names are case-insensitive
-  # but Docker tags must be all lowercase.
-  IMAGE_NAME: ghcr.io/${{ lower(github.repository_owner) }}/opensandbox-runtime
   DOCKERFILE: Dockerfile_runtime
 
 jobs:
@@ -33,6 +29,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Resolve lowercase image name
+        id: image
+        run: |
+          # GitHub owner is case-insensitive but Docker tags must be lowercase.
+          OWNER=$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${OWNER}/opensandbox-runtime" >>"$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -55,8 +58,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ inputs.tag_rc || '1.0-rc3' }}
-            ${{ env.IMAGE_NAME }}:latest
+            ${{ steps.image.outputs.image }}:${{ inputs.tag_rc || '1.0-rc3' }}
+            ${{ steps.image.outputs.image }}:latest
           labels: |
             org.opencontainers.image.title=opensandbox-runtime
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
