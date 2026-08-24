@@ -34,9 +34,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # 1. Install common tools. No build-essential (wheel-only install) and no
 #    software-properties-common / lsb-release (they would pull in a second,
 #    apt-managed python3 alongside the miniforge3 one we install below).
-#    git 保留(代码沙箱拉取仓库),curl+zip/unzip 保留(下载/解压资源)。
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git unzip zip tar \
+    ca-certificates curl unzip zip tar \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Install miniforge3 (Conda-forge distribution with Python 3.12).
