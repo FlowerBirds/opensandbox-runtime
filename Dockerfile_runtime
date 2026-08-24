@@ -44,23 +44,17 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     uv python install ${PYTHON_VERSION}
 
 # 3. Resolve the actual Python 3.12 install path and put it on PATH.
-#    uv installs Python via python-build-standalone which ships WITHOUT pip
-#    and WITHOUT the ensurepip module, so we bootstrap pip with the official
-#    get-pip.py script instead.
+#    uv's Python ships with pip3; alias `pip` to pip3 for convenience.
 RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpython-${PYTHON_VERSION}*" | sort -V | tail -n 1)/bin && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python3 && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python && \
-    curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
-    "${PYTHON_BIN_DIR}/python3" /tmp/get-pip.py --no-warn-script-location && \
-    rm /tmp/get-pip.py && \
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip3 && \
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip
 
-# 4. Install common Python dependencies (kept in its own layer for cache reuse).
-#    --prefer-binary  forces pip to pick wheels when available; only falls back
-#    to source build when no wheel exists for the current platform / Python.
+# 4. Install common Python dependencies with uv (kept in its own layer for
+#    cache reuse). uv is ~10-100x faster than pip and defaults to wheels.
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir --prefer-binary -r /tmp/requirements.txt && \
+RUN uv pip install --system --no-cache -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 WORKDIR /workspace
