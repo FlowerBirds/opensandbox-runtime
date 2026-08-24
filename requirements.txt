@@ -1,0 +1,31 @@
+# Common Python dependencies for the OpenSandbox runtime image.
+# Install with:
+#   pip install -r requirements.txt
+# Versions are unpinned so pip resolves the latest compatible releases;
+# pin specific versions in downstream projects if reproducibility is required.
+
+# --- Data processing & analysis ---
+numpy
+pandas
+openpyxl
+scipy
+
+# --- Office documents ---
+python-docx      # Word (.docx)
+python-pptx      # PowerPoint (.pptx)
+PyYAML           # YAML config files
+
+# --- HTTP clients ---
+requests
+httpx
+
+# --- Visualization & images ---
+matplotlib
+Pillow
+
+# --- Utilities ---
+tqdm             # progress bars
+python-dateutil  # extended date/time parsing
+tabulate         # pretty-print tables
+beautifulsoup4   # HTML/XML parsing
+lxml             # fast XML/HTML parser
