@@ -28,7 +28,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHON_VERSION=3.12 \
     UV_PYTHON_INSTALL_DIR=/opt/python/versions \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # uv defaults so `uv pip install` works without flags in this image:
+    #   UV_SYSTEM               -> --system
+    #   UV_NO_CACHE             -> --no-cache
+    #   UV_BREAK_SYSTEM_PACKAGES -> --break-system-packages
+    UV_SYSTEM=1 \
+    UV_NO_CACHE=1 \
+    UV_BREAK_SYSTEM_PACKAGES=1
 
 # 1. Install common tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -53,10 +60,10 @@ RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpytho
 
 # 4. Install common Python dependencies with uv (kept in its own layer for
 #    cache reuse). uv is ~10-100x faster than pip and defaults to wheels.
-#    --break-system-packages bypasses PEP 668 "externally-managed" checks
-#    so uv can install into the uv-managed system Python.
+#    --system / --no-cache / --break-system-packages are baked into ENV above
+#    so the actual install command stays clean.
 COPY requirements.txt /tmp/requirements.txt
-RUN uv pip install --system --no-cache --break-system-packages -r /tmp/requirements.txt && \
+RUN uv pip install -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 WORKDIR /workspace
