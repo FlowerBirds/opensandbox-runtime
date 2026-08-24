@@ -1,19 +1,29 @@
 # Common Python dependencies for the OpenSandbox runtime image.
 # Install with:
 #   pip install -r requirements.txt
-# Versions are unpinned so pip resolves the latest compatible releases;
-# pin specific versions in downstream projects if reproducibility is required.
+# Versioning convention:
+#   * ==x.y.z  exact pin (security / reproducibility)
+#   * >=x.y    minimum version floor (feature guarantee)
+#   * (none)   latest compatible release
 
 # --- Data processing & analysis ---
 numpy
 pandas
-openpyxl
+openpyxl>=3.1
 scipy
 
 # --- Office documents ---
-python-docx      # Word (.docx)
-python-pptx      # PowerPoint (.pptx)
-PyYAML           # YAML config files
+python-docx>=1.1      # Word (.docx)
+python-pptx>=0.6      # PowerPoint (.pptx)
+markitdown>=0.1       # Office/PDF/Image -> Markdown
+PyYAML                # YAML config files
+
+# --- Database ---
+SQLAlchemy==2.0.51    # SQL toolkit / ORM
+PyMySQL==1.2.0        # pure-Python MySQL driver
+
+# --- Crypto (Chinese national standards / 国密) ---
+gmssl==3.2.2          # SM2 / SM3 / SM4
 
 # --- HTTP clients ---
 requests
@@ -24,8 +34,8 @@ matplotlib
 Pillow
 
 # --- Utilities ---
-tqdm             # progress bars
-python-dateutil  # extended date/time parsing
-tabulate         # pretty-print tables
-beautifulsoup4   # HTML/XML parsing
-lxml             # fast XML/HTML parser
+tqdm
+python-dateutil
+tabulate
+beautifulsoup4
+lxml
