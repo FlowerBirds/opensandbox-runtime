@@ -40,6 +40,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 2. Install miniforge3 (Conda-forge distribution with Python 3.12).
 #    Miniforge picks the right arch-specific installer based on TARGETARCH.
+#    After install we strip the conda tooling itself — we only need the
+#    Python runtime + pip, so `conda install` is not required:
+#      - conda clean -afy     clears the downloaded package cache (pkgs)
+#      - rm conda-meta/envs   drops the conda metadata / env scaffolding
+#      - rm bin/conda, mamba  removes the conda commands
+#      - rm /root/.conda      drops conda user config
+#    python, pip and site-packages under /usr/local/miniforge3 stay intact.
 RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) MINIFORGE_ARCH="x86_64"   ;; \
@@ -50,6 +57,13 @@ RUN set -eux; \
         -O /tmp/miniforge.sh && \
     chmod +x /tmp/miniforge.sh && \
     /tmp/miniforge.sh -b -p /usr/local/miniforge3 && \
+    conda clean -afy && \
+    rm -rf /usr/local/miniforge3/conda-meta \
+           /usr/local/miniforge3/envs \
+           /usr/local/miniforge3/bin/conda \
+           /usr/local/miniforge3/bin/mamba \
+           /usr/local/miniforge3/bin/conda-shell \
+           /root/.conda && \
     rm /tmp/miniforge.sh
 
 # 3. Put miniforge3 (python, pip, conda) on PATH ahead of system binaries.
