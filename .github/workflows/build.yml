@@ -16,7 +16,9 @@ on:
 env:
   REGISTRY: ghcr.io
   # Must include the registry prefix; without it, buildx falls back to Docker Hub.
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/opensandbox-runtime
+  # The owner part is lowercased because GitHub user/org names are case-insensitive
+  # but Docker tags must be all lowercase.
+  IMAGE_NAME: ghcr.io/${{ lower(github.repository_owner) }}/opensandbox-runtime
   DOCKERFILE: Dockerfile_runtime
 
 jobs:
