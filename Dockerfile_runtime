@@ -52,6 +52,11 @@ RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpytho
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip3 && \
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip
 
+# 4. Install common Python dependencies (kept in its own layer for cache reuse)
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
+
 WORKDIR /workspace
 
 CMD ["python3"]
