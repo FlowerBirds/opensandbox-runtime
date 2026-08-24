@@ -31,9 +31,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# 1. Install common tools
+# 1. Install common tools. No build-essential: we only install from wheels
+#    (see --only-binary=:all: in step 4), so no C compiler toolchain is needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget git vim nano unzip zip tar build-essential \
+    ca-certificates curl wget git vim nano unzip zip tar \
     software-properties-common gnupg lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,10 +56,12 @@ RUN set -eux; \
 ENV PATH="/usr/local/miniforge3/bin:${PATH}"
 
 # 4. Install common Python dependencies (kept in its own layer for cache reuse).
-#    --prefer-binary prefers wheels and only falls back to source build.
+#    --only-binary=:all: requires wheels for every package. This is safe because
+#    build-essential was removed in step 1, so source builds would fail anyway;
+#    failing loudly here is clearer than failing silently later at runtime.
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
-    pip install --prefer-binary --no-cache-dir -r /tmp/requirements.txt && \
+    pip install --only-binary=:all: --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
 
 WORKDIR /workspace
