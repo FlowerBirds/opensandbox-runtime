@@ -51,4 +51,4 @@ RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpytho
 
 WORKDIR /workspace
 
-CMD ["/bin/bash"]
+CMD ["python3"]
