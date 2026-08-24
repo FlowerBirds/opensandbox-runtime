@@ -47,7 +47,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
 RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpython-${PYTHON_VERSION}*" | sort -V | tail -n 1)/bin && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python3 && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python && \
-    ln -sf "${PYTHON_BIN_DIR}/pip" /usr/local/bin/pip3 || true
+    # uv-installed Python is shipped without pip; bootstrap it via ensurepip.
+    "${PYTHON_BIN_DIR}/python3" -m ensurepip --upgrade && \
+    ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip3 && \
+    ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip
 
 WORKDIR /workspace
 
