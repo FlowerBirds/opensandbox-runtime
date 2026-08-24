@@ -57,7 +57,7 @@ RUN set -eux; \
         -O /tmp/miniforge.sh && \
     chmod +x /tmp/miniforge.sh && \
     /tmp/miniforge.sh -b -p /usr/local/miniforge3 && \
-    conda clean -afy && \
+    /usr/local/miniforge3/bin/conda clean -afy && \
     rm -rf /usr/local/miniforge3/conda-meta \
            /usr/local/miniforge3/envs \
            /usr/local/miniforge3/bin/conda \
