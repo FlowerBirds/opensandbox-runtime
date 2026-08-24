@@ -43,12 +43,16 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
     mkdir -p /opt/python/versions && \
     uv python install ${PYTHON_VERSION}
 
-# 3. Resolve the actual Python 3.12 install path and put it on PATH
+# 3. Resolve the actual Python 3.12 install path and put it on PATH.
+#    uv installs Python via python-build-standalone which ships WITHOUT pip
+#    and WITHOUT the ensurepip module, so we bootstrap pip with the official
+#    get-pip.py script instead.
 RUN PYTHON_BIN_DIR=$(find /opt/python/versions -maxdepth 1 -type d -name "cpython-${PYTHON_VERSION}*" | sort -V | tail -n 1)/bin && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python3 && \
     ln -sf "${PYTHON_BIN_DIR}/python3" /usr/local/bin/python && \
-    # uv-installed Python is shipped without pip; bootstrap it via ensurepip.
-    "${PYTHON_BIN_DIR}/python3" -m ensurepip --upgrade && \
+    curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
+    "${PYTHON_BIN_DIR}/python3" /tmp/get-pip.py --no-warn-script-location && \
+    rm /tmp/get-pip.py && \
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip3 && \
     ln -sf "${PYTHON_BIN_DIR}/pip3" /usr/local/bin/pip
 
