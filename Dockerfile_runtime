@@ -13,70 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Minimal runtime image: Ubuntu 24.04 + common tools + Python via miniforge3.
-# No Java/Maven/Go/Node, no Jupyter/ipykernel.
+# Minimal runtime image: official Python 3.12 slim (Debian 12 base).
+# No Java/Maven/Go/Node, no Jupyter/ipykernel, no conda.
 
-FROM ubuntu:24.04
-
-ARG TARGETARCH
-# Miniforge3 ships a Python 3.12 toolchain out of the box; override with
-# --build-arg MINIFORGE_VERSION=<ver> to pin a different release.
-ARG MINIFORGE_VERSION=25.3.1-0
-
-# Use bash for RUN commands to support source and arrays
-SHELL ["/bin/bash", "-c"]
+FROM python:3.12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# 1. Install common tools. No build-essential (wheel-only install) and no
-#    software-properties-common / lsb-release (they would pull in a second,
-#    apt-managed python3 alongside the miniforge3 one we install below).
+# 1. Install common tools. No build-essential (we only install from wheels via
+#    --only-binary=:all: below), so no C compiler toolchain is needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl unzip zip tar \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install miniforge3 (Conda-forge distribution with Python 3.12).
-#    Miniforge picks the right arch-specific installer based on TARGETARCH.
-#    After install we strip the conda tooling itself — we only need the
-#    Python runtime + pip, so `conda install` is not required:
-#      - conda clean -afy     clears the downloaded package cache (pkgs)
-#      - rm conda-meta/envs   drops the conda metadata / env scaffolding
-#      - rm bin/conda, mamba  removes the conda commands
-#      - rm /root/.conda      drops conda user config
-#    python, pip and site-packages under /usr/local/miniforge3 stay intact.
-RUN set -eux; \
-    case "${TARGETARCH}" in \
-        amd64) MINIFORGE_ARCH="x86_64"   ;; \
-        arm64) MINIFORGE_ARCH="aarch64"  ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-${MINIFORGE_ARCH}.sh" \
-        -o /tmp/miniforge.sh && \
-    chmod +x /tmp/miniforge.sh && \
-    /tmp/miniforge.sh -b -p /usr/local/miniforge3 && \
-    /usr/local/miniforge3/bin/conda clean -afy && \
-    rm -rf /usr/local/miniforge3/conda-meta \
-           /usr/local/miniforge3/envs \
-           /usr/local/miniforge3/bin/conda \
-           /usr/local/miniforge3/bin/mamba \
-           /usr/local/miniforge3/bin/conda-shell \
-           /root/.conda && \
-    rm /tmp/miniforge.sh
-
-# 3. Put miniforge3 (python, pip, conda) on PATH ahead of system binaries.
-ENV PATH="/usr/local/miniforge3/bin:${PATH}"
-
-# 4. Install common Python dependencies (kept in its own layer for cache reuse).
-#    --only-binary=:all: requires wheels for every package. This is safe because
-#    build-essential was removed in step 1, so source builds would fail anyway;
-#    failing loudly here is clearer than failing silently later at runtime.
+# 2. Install common Python dependencies (kept in its own layer for cache reuse).
+#    --only-binary=:all: requires wheels for every package — source builds
+#    would fail without a compiler, so failing loudly here is preferable.
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
     pip install --only-binary=:all: --no-cache-dir -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt
+
+# 3. Drop bytecode caches left behind by the pip install above.
+RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} + \
+    && find /usr/local/lib/python3.12 -name "*.pyc" -delete
 
 WORKDIR /workspace
 
