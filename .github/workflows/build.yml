@@ -135,6 +135,43 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: opensandbox-runtime ${{ steps.meta.outputs.tag }}
+          body: |
+            ## 🚀 使用方法
+
+            ### 方式一：直接拉取（推荐）
+
+            适用于能访问 `ghcr.io` 的环境：
+
+            ```bash
+            docker pull ghcr.io/flowerbirds/opensandbox-runtime:${{ steps.meta.outputs.tag }}
+            docker run --rm -it ghcr.io/flowerbirds/opensandbox-runtime:${{ steps.meta.outputs.tag }}
+            ```
+
+            ### 方式二：下载附件并离线导入
+
+            适用于内网或隔离环境（需要 `zstd`，大多数 Linux 自带，macOS `brew install zstd`，Windows `winget install zstd`）：
+
+            ```bash
+            # 1. 下载本页底部附件
+            curl -L -o opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst \
+              https://github.com/FlowerBirds/opensandbox-runtime/releases/download/${{ steps.meta.outputs.tag }}/opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
+
+            # 2. 解压并导入到 Docker
+            zstd -d opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst --stdout | docker load
+
+            # 3. 验证
+            docker images ghcr.io/flowerbirds/opensandbox-runtime:${{ steps.meta.outputs.tag }}
+            docker run --rm ghcr.io/flowerbirds/opensandbox-runtime:${{ steps.meta.outputs.tag }}
+            ```
+
+            ### 镜像说明
+
+            - **多架构**：`linux/amd64` + `linux/arm64`，`docker run` 时按宿主平台自动挑选
+            - **基础镜像**：`python:3.12-slim`（Debian 12）
+            - **默认入口**：`python`（无参数启动进入 REPL）
+            - **预装系统工具**：`procps`（`ps`/`top`）、`file`、`tree`、`jq`、`unzip`、`zip`、`tar`、`curl`
+            - **预装 Python 包**：`numpy`、`pandas`、`openpyxl`、`python-docx`、`python-pptx`、`markitdown`、`PyYAML`、`SQLAlchemy`、`PyMySQL`、`gmssl`（国密）、`requests`、`httpx`、`psutil`、`tqdm` 等
+            - **私有包**：`tempo_oi`（如需使用请配置 `PRIVATE_PYPI_*` 变量/密钥后自行构建）
           generate_release_notes: true
           files: opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
         env:
