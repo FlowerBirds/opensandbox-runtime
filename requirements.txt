@@ -34,3 +34,4 @@ python-dateutil
 tabulate
 beautifulsoup4
 lxml
+psutil            # process / system / network introspection

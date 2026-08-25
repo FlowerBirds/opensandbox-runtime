@@ -26,7 +26,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # 1. Install common tools. No build-essential (we only install from wheels via
 #    --only-binary=:all: below), so no C compiler toolchain is needed.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl unzip zip tar \
+    ca-certificates curl file jq procps tree unzip zip tar \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Install common Python dependencies (kept in its own layer for cache reuse).
