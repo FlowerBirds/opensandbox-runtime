@@ -66,3 +66,8 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            PRIVATE_PYPI_URL=${{ vars.PRIVATE_PYPI_URL }}
+            PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
+          secrets: |
+            pypi_password=${{ secrets.PRIVATE_PYPI_PASSWORD }}

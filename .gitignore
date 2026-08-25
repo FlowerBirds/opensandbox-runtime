@@ -20,6 +20,7 @@ parts/
 sdist/
 var/
 wheels/
+whl/                    # local wheel cache for offline / private builds
 share/python-wheels/
 *.egg-info/
 .installed.cfg
