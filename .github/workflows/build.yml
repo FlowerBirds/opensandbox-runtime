@@ -1,17 +1,25 @@
 name: Build and Push Runtime Image
 
-# Build Dockerfile_runtime for linux/amd64 and linux/arm64, tag as
-# 1.0-rc3 and latest, and push to GitHub Container Registry (ghcr.io).
+# Build Dockerfile_runtime for linux/amd64 and linux/arm64, push the multi-arch
+# image to GitHub Container Registry (ghcr.io), and on a v* tag push (or a
+# workflow_dispatch with release=true) also publish a zstd-compressed tarball
+# as a downloadable GitHub Release asset.
 
 on:
   push:
     branches: [main]
+    tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       tag_rc:
-        description: 'Release candidate tag (e.g. 1.0-rc3)'
+        description: 'Image tag (e.g. 1.0-rc3). Used on workflow_dispatch.'
         required: false
         default: '1.0-rc3'
+      release:
+        description: 'Also publish the .tar.zst as a GitHub Release asset.'
+        type: boolean
+        required: false
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -23,19 +31,32 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      contents: write   # needed by softprops/action-gh-release
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve lowercase image name
-        id: image
+      - name: Resolve image name and release tag
+        id: meta
         run: |
           # GitHub owner is case-insensitive but Docker tags must be lowercase.
           OWNER=$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "image=ghcr.io/${OWNER}/opensandbox-runtime" >>"$GITHUB_OUTPUT"
+
+          # Pick the tag for this build:
+          #   - tag push (refs/tags/vX.Y.Z)  -> the tag itself
+          #   - workflow_dispatch           -> user-supplied tag_rc
+          #   - branch push                 -> default 1.0-rc3
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag_rc }}"
+          else
+            TAG="1.0-rc3"
+          fi
+          echo "tag=${TAG}" >>"$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -50,7 +71,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -58,8 +79,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.image.outputs.image }}:${{ inputs.tag_rc || '1.0-rc3' }}
-            ${{ steps.image.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.image }}:latest
           labels: |
             org.opencontainers.image.title=opensandbox-runtime
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
@@ -71,3 +92,50 @@ jobs:
             PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
           secrets: |
             pypi_password=${{ secrets.PRIVATE_PYPI_PASSWORD }}
+
+      # ---- Optional release asset: only on v* tag push or workflow_dispatch --release ----
+      - name: Decide whether to publish a release
+        id: relcond
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.release }}" == "true" ]]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build multi-arch tarball
+        if: steps.relcond.outputs.should_release == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: linux/amd64,linux/arm64
+          push: false
+          load: false
+          outputs: type=tar,dest=opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar
+          build-args: |
+            PRIVATE_PYPI_URL=${{ vars.PRIVATE_PYPI_URL }}
+            PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
+          secrets: |
+            pypi_password=${{ secrets.PRIVATE_PYPI_PASSWORD }}
+
+      - name: Compress with zstd
+        if: steps.relcond.outputs.should_release == 'true'
+        run: |
+          zstd -T0 -19 -f --rm \
+            "opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar" \
+            -o "opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst"
+          ls -lh "opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst"
+
+      - name: Publish GitHub Release
+        if: steps.relcond.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: opensandbox-runtime ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          files: opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
