@@ -44,9 +44,11 @@ RUN --mount=type=secret,id=pypi_password \
     if [ -n "${PRIVATE_PYPI_URL}" ]; then \
         HOST="${PRIVATE_PYPI_URL#http://}"; \
         HOST="${HOST#https://}"; \
+        TRUSTED_HOST="${HOST%%:*}"; \
         pip install --only-binary=:all: --no-cache-dir \
             --index-url https://pypi.org/simple \
             --extra-index-url "http://${PRIVATE_PYPI_USERNAME}:$(cat /run/secrets/pypi_password)@${HOST}/simple" \
+            --trusted-host "${TRUSTED_HOST}" \
             tempo_oi; \
     fi && \
     rm /tmp/requirements.txt
