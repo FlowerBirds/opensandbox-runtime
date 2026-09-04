@@ -58,9 +58,13 @@ RUN --mount=type=secret,id=pypi_password \
 RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} + \
     && find /usr/local/lib/python3.12 -name "*.pyc" -delete
 
-# 4. Install DPI shared libraries (unzipped to /opt so /opt/dpi lands on LD_LIBRARY_PATH).
-COPY dpi.zip /tmp/dpi.zip
+# 4. Install DPI shared libraries. The zip lives in the `dpi` release asset
+#    (see https://github.com/FlowerBirds/opensandbox-runtime/releases/tag/dpi);
+#    downloading at build time keeps dpi.zip out of the build context and out
+#    of git. Override DPI_RELEASE_URL via --build-arg to point at a mirror.
+ARG DPI_RELEASE_URL=https://github.com/FlowerBirds/opensandbox-runtime/releases/download/dpi/dpi.zip
 RUN set -eux; \
+    curl -fsSL -o /tmp/dpi.zip "${DPI_RELEASE_URL}"; \
     unzip -o /tmp/dpi.zip -d /opt; \
     rm -f /tmp/dpi.zip
 
