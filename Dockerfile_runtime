@@ -21,7 +21,8 @@ FROM python:3.12-slim
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    LD_LIBRARY_PATH=/opt/dpi:${LD_LIBRARY_PATH}
 
 # 1. Install common tools. No build-essential (we only install from wheels via
 #    --only-binary=:all: below), so no C compiler toolchain is needed.
@@ -56,6 +57,12 @@ RUN --mount=type=secret,id=pypi_password \
 # 3. Drop bytecode caches left behind by the pip install above.
 RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} + \
     && find /usr/local/lib/python3.12 -name "*.pyc" -delete
+
+# 4. Install DPI shared libraries (unzipped to /opt so /opt/dpi lands on LD_LIBRARY_PATH).
+COPY dpi.zip /tmp/dpi.zip
+RUN set -eux; \
+    unzip -o /tmp/dpi.zip -d /opt; \
+    rm -f /tmp/dpi.zip
 
 WORKDIR /workspace
 
