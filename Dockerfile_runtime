@@ -22,7 +22,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    LD_LIBRARY_PATH=/opt/dpi:${LD_LIBRARY_PATH}
+    LD_LIBRARY_PATH=/opt/dpi:${LD_LIBRARY_PATH} \
+    PYTHONPATH=/opt/python/pkgs:${PYTHONPATH}
 
 # 1. Install common tools. No build-essential (we only install from wheels via
 #    --only-binary=:all: below), so no C compiler toolchain is needed.
