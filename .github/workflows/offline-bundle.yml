@@ -23,9 +23,9 @@ on:
         description: 'Publish the tarballs as a GitHub Release asset.'
         type: boolean
         required: false
-        default: false
+        default: true
   push:
-    tags: ['v*']
+    tags: ['opensandbox-offline-v*']
 
 permissions:
   contents: read
@@ -61,7 +61,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
+            # tag looks like opensandbox-offline-v0.2.2
+            VERSION="${GITHUB_REF_NAME#opensandbox-offline-v}"
           else
             VERSION="${{ inputs.version }}"
           fi
@@ -131,7 +132,7 @@ jobs:
           set -euo pipefail
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_type }}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
-            VERSION="${GITHUB_REF_NAME#v}"
+            VERSION="${GITHUB_REF_NAME#opensandbox-offline-v}"
           else
             VERSION="${{ inputs.version }}"
             TAG="opensandbox-offline-${VERSION#v}"
