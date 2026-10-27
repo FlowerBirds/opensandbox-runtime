@@ -1,0 +1,8 @@
+# Force LF line endings for scripts that break with CRLF.
+# Windows git will otherwise convert these to CRLF on checkout,
+# which breaks CMD `^` line continuations and shell scripts.
+*.bat            text eol=lf
+*.sh             text eol=lf
+*.cmd            text eol=lf
+Dockerfile       text eol=lf
+Dockerfile_*     text eol=lf
