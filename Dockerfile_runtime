@@ -18,11 +18,11 @@
 
 FROM python:3.12-slim
 
+# LD_LIBRARY_PATH=/opt/dpi:${LD_LIBRARY_PATH}  # 已停用：DPI 共享库不再随镜像安装
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    LD_LIBRARY_PATH=/opt/dpi:${LD_LIBRARY_PATH} \
     PYTHONPATH=/opt/python/pkgs:${PYTHONPATH}
 
 # 1. Install common tools. No build-essential (we only install from wheels via
@@ -63,11 +63,12 @@ RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} +
 #    (see https://github.com/FlowerBirds/opensandbox-runtime/releases/tag/dpi);
 #    downloading at build time keeps dpi.zip out of the build context and out
 #    of git. Override DPI_RELEASE_URL via --build-arg to point at a mirror.
-ARG DPI_RELEASE_URL=https://github.com/FlowerBirds/opensandbox-runtime/releases/download/dpi/dpi.zip
-RUN set -eux; \
-    curl -fsSL -o /tmp/dpi.zip "${DPI_RELEASE_URL}"; \
-    unzip -o /tmp/dpi.zip -d /opt; \
-    rm -f /tmp/dpi.zip
+#    已停用：DPI 共享库不再随镜像安装，需要时再启用以下内容。
+# ARG DPI_RELEASE_URL=https://github.com/FlowerBirds/opensandbox-runtime/releases/download/dpi/dpi.zip
+# RUN set -eux; \
+#     curl -fsSL -o /tmp/dpi.zip "${DPI_RELEASE_URL}"; \
+#     unzip -o /tmp/dpi.zip -d /opt; \
+#     rm -f /tmp/dpi.zip
 
 WORKDIR /workspace
 
