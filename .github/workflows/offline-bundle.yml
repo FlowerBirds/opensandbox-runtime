@@ -42,7 +42,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     strategy:
       fail-fast: false
@@ -83,28 +82,8 @@ jobs:
           fi
           zstd --version
 
-      # Harmless for a public package; required when ghcr.io/... is private.
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Optional: anonymous Docker Hub pulls are rate limited, so log in when
-      # DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets are configured.
-      - name: Log in to Docker Hub (optional)
-        env:
-          DH_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -n "${DH_USERNAME}" && -n "${DH_TOKEN}" ]]; then
-            echo "${DH_TOKEN}" | docker login --username "${DH_USERNAME}" --password-stdin
-          else
-            echo "DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set — pulling from Docker Hub anonymously."
-          fi
-
+      # All three images are pulled anonymously: the ghcr.io package is public
+      # and the Docker Hub images are not owned by this repo. No registry login.
       - name: Pull images for linux/${{ matrix.docker_arch }}
         run: |
           set -euo pipefail
