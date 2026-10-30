@@ -3,9 +3,13 @@ name: Build opensandbox-server Offline Bundle
 # Assemble an offline deployment bundle for opensandbox-server.
 #
 # The bundle contains three images:
-#   opensandbox/server:v0.2.2                     -> opensandbox-server.tar.zst
+#   opensandbox/server:latest                     -> opensandbox-server.tar.zst
 #   opensandbox/execd:v1.0.22                     -> opensandbox-execd.tar.zst
 #   ghcr.io/flowerbirds/opensandbox-runtime:latest -> opensandbox-runtime.tar.zst
+#
+# The server image is pulled as a pinned version and then re-tagged to
+# :latest before export, so the bundle carries a stable tag that can be
+# referenced without knowing the exact upstream version.
 #
 # Each image is pulled for linux/amd64 (x86_64) and linux/arm64 (aarch64),
 # exported with `docker save | zstd -T0 -19`, dropped into an
@@ -32,6 +36,7 @@ permissions:
 
 env:
   SERVER_IMAGE: opensandbox/server:v0.2.2
+  SERVER_IMAGE_LATEST: opensandbox/server:latest
   EXECD_IMAGE: opensandbox/execd:v1.0.22
   RUNTIME_IMAGE: ghcr.io/flowerbirds/opensandbox-runtime:latest
 
@@ -102,8 +107,10 @@ jobs:
           set -euo pipefail
           BUNDLE="${{ steps.meta.outputs.bundle }}"
           mkdir -p "$BUNDLE"
+          # Re-tag the pinned server image to :latest; only that tag is exported.
+          docker tag "${SERVER_IMAGE}" "${SERVER_IMAGE_LATEST}"
           docker save "${RUNTIME_IMAGE}" | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-runtime.tar.zst"
-          docker save "${SERVER_IMAGE}"  | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-server.tar.zst"
+          docker save "${SERVER_IMAGE_LATEST}" | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-server.tar.zst"
           docker save "${EXECD_IMAGE}"   | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-execd.tar.zst"
           tar -czf "${BUNDLE}.tar.gz" "$BUNDLE"
           ls -lh "$BUNDLE" "${BUNDLE}.tar.gz"
@@ -169,7 +176,7 @@ jobs:
 
             ```
             opensandbox-offline-${{ steps.meta.outputs.version }}.x86_64/
-            ├── opensandbox-server.tar.zst    # opensandbox/server:v0.2.2
+            ├── opensandbox-server.tar.zst    # opensandbox/server:latest
             ├── opensandbox-execd.tar.zst     # opensandbox/execd:v1.0.22
             └── opensandbox-runtime.tar.zst   # ghcr.io/flowerbirds/opensandbox-runtime:latest
             ```
@@ -186,7 +193,7 @@ jobs:
               zstd -d "$f" --stdout | docker load
             done
 
-            # 3. 验证
+            # 3. 验证（server 镜像导入后的 tag 为 opensandbox/server:latest）
             docker images | grep -E 'opensandbox/(server|execd)|opensandbox-runtime'
             ```
 
