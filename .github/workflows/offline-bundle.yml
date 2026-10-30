@@ -4,11 +4,8 @@ name: Build opensandbox-server Offline Bundle
 #
 # The bundle contains three images:
 #   opensandbox/server:latest                     -> opensandbox-server.tar.zst
-#   opensandbox/execd:<execd_version>             -> opensandbox-execd.tar.zst
+#   opensandbox/execd:v1.0.22                     -> opensandbox-execd.tar.zst
 #   ghcr.io/flowerbirds/opensandbox-runtime:latest -> opensandbox-runtime.tar.zst
-#
-# The execd version comes from the `execd_version` workflow input (default
-# 1.0.22) so a new execd release only needs a workflow re-run.
 #
 # The server image is pulled as a pinned version and then re-tagged to
 # :latest before export, so the bundle carries a stable tag that can be
@@ -26,10 +23,6 @@ on:
         description: 'Bundle version (used in the folder / tarball name).'
         required: false
         default: '0.2.2'
-      execd_version:
-        description: 'execd image version (opensandbox/execd:<version>).'
-        required: false
-        default: '1.0.22'
       publish_release:
         description: 'Publish the tarballs as a GitHub Release asset.'
         type: boolean
@@ -44,7 +37,7 @@ permissions:
 env:
   SERVER_IMAGE: opensandbox/server:v0.2.2
   SERVER_IMAGE_LATEST: opensandbox/server:latest
-  EXECD_IMAGE: opensandbox/execd:${{ inputs.execd_version || '1.0.22' }}
+  EXECD_IMAGE: opensandbox/execd:v1.0.22
   RUNTIME_IMAGE: ghcr.io/flowerbirds/opensandbox-runtime:latest
 
 jobs:
@@ -153,7 +146,6 @@ jobs:
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION#v}" >> "$GITHUB_OUTPUT"
-          echo "execd_version=${{ inputs.execd_version || '1.0.22' }}" >> "$GITHUB_OUTPUT"
 
       - name: Download bundle artifacts
         uses: actions/download-artifact@v4
@@ -185,7 +177,7 @@ jobs:
             ```
             opensandbox-offline-${{ steps.meta.outputs.version }}.x86_64/
             ├── opensandbox-server.tar.zst    # opensandbox/server:latest
-            ├── opensandbox-execd.tar.zst     # opensandbox/execd:${{ steps.meta.outputs.execd_version }}
+            ├── opensandbox-execd.tar.zst     # opensandbox/execd:v1.0.22
             └── opensandbox-runtime.tar.zst   # ghcr.io/flowerbirds/opensandbox-runtime:latest
             ```
 
