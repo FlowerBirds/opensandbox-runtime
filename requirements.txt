@@ -14,7 +14,7 @@ openpyxl>=3.1
 # --- Office documents ---
 python-docx>=1.1      # Word (.docx)
 python-pptx>=0.6      # PowerPoint (.pptx)
-markitdown>=0.1       # Office/PDF/Image -> Markdown
+markitdown[all]>=0.1  # Office/PDF/Image/Audio/Email -> Markdown (全部可选依赖)
 PyYAML                # YAML config files
 
 # --- Database ---
