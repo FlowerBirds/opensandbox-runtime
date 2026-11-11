@@ -114,13 +114,45 @@ jobs:
       - name: Export images and package the bundle
         run: |
           set -euo pipefail
+          PLATFORM="linux/${{ matrix.docker_arch }}"
+          ARCH="${{ matrix.docker_arch }}"
           BUNDLE="${{ steps.meta.outputs.bundle }}"
           mkdir -p "$BUNDLE"
+
+          # runner 使用 containerd image store：一个 tag 可能是多架构 OCI index，
+          # 而本地只缓存了当前平台的层。直接 `docker save <tag>` 会去序列化其它
+          # 平台的 manifest，报 "unable to create manifests file: NotFound: content
+          # digest ... not found"。因此导出时必须锁定平台。
+          docker version
+          if docker image save --help 2>&1 | grep -q -- '--platform'; then
+            echo "==> docker save --platform ${PLATFORM}"
+            save_img() {
+              docker save --platform "$PLATFORM" "$1" | zstd -T0 -19 -f -o "$2"
+            }
+          else
+            # 旧版 Docker（< 28 / API < 1.48）没有 --platform：
+            # 改成按该平台的 manifest digest 拉取，再把本地 tag 指到它上面导出。
+            echo "==> docker save --platform unsupported, fallback to per-platform digest"
+            save_img() {
+              local ref="$1" out="$2" repo digest
+              repo="${ref%:*}"
+              digest="$(docker buildx imagetools inspect "$ref" --format \
+                "{{range .Manifests}}{{if and (eq .Platform.OS \"linux\") (eq .Platform.Architecture \"${ARCH}\")}}{{.Digest}}{{end}}{{end}}")"
+              if [[ -z "$digest" ]]; then
+                echo "::error::no ${PLATFORM} manifest found for ${ref}"
+                exit 1
+              fi
+              docker pull --platform "$PLATFORM" "${repo}@${digest}"
+              docker tag "${repo}@${digest}" "$ref"
+              docker save "$ref" | zstd -T0 -19 -f -o "$out"
+            }
+          fi
+
           # Re-tag the pinned server image to :latest; only that tag is exported.
           docker tag "${SERVER_IMAGE}" "${SERVER_IMAGE_LATEST}"
-          docker save "${RUNTIME_IMAGE}" | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-runtime.tar.zst"
-          docker save "${SERVER_IMAGE_LATEST}" | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-server.tar.zst"
-          docker save "${EXECD_IMAGE}"   | zstd -T0 -19 -f -o "$BUNDLE/opensandbox-execd.tar.zst"
+          save_img "${RUNTIME_IMAGE}"       "$BUNDLE/opensandbox-runtime.tar.zst"
+          save_img "${SERVER_IMAGE_LATEST}" "$BUNDLE/opensandbox-server.tar.zst"
+          save_img "${EXECD_IMAGE}"         "$BUNDLE/opensandbox-execd.tar.zst"
           tar -czf "${BUNDLE}.tar.gz" "$BUNDLE"
           ls -lh "$BUNDLE" "${BUNDLE}.tar.gz"
 
