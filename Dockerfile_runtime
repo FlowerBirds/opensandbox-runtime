@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Minimal runtime image: official Python 3.12 slim (Debian 12 base).
-# No Java/Maven/Go/Node, no Jupyter/ipykernel, no conda.
+# No Java/Maven/Go, no Jupyter/ipykernel, no conda.
 
 FROM python:3.12-slim
 
@@ -23,16 +23,50 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/opt/python/pkgs:${PYTHONPATH} \
+    PYTHONPATH=/opt/python/pkgs \
+    NODE_ROOT=/opt/node \
+    NODE_V22=22.23.5 \
     PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # 1. Install common tools. No build-essential (we only install from wheels via
 #    --only-binary=:all: below), so no C compiler toolchain is needed.
+#    libatomic1/libstdc++6 are required by the node binary (step 2) and by the
+#    node driver bundled with playwright (step 4); the slim base image ships
+#    neither, and without them node aborts with
+#    "error while loading shared libraries: libatomic.so.1".
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl file jq procps tree unzip zip tar \
+    libatomic1 libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install common Python dependencies (kept in its own layer for cache reuse).
+# 2. Install Node.js 22 (LTS). The upstream tarball is used rather than a
+#    distro package so the version matches what users expect. The .tar.gz
+#    variant is used because the slim image has no xz-utils.
+ARG TARGETARCH
+RUN set -eux; \
+    ARCH=""; \
+    if [ -z "${TARGETARCH}" ]; then \
+        case "$(uname -m)" in \
+            x86_64) TARGETARCH="amd64" ;; \
+            aarch64) TARGETARCH="arm64" ;; \
+            *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;; \
+        esac; \
+    fi; \
+    case "${TARGETARCH}" in \
+        "amd64") ARCH="x64" ;; \
+        "arm64") ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac; \
+    mkdir -p "${NODE_ROOT}"; \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_V22}/node-v${NODE_V22}-linux-${ARCH}.tar.gz" \
+        | tar -xz -C "${NODE_ROOT}"; \
+    mv "${NODE_ROOT}/node-v${NODE_V22}-linux-${ARCH}" "${NODE_ROOT}/v${NODE_V22}"; \
+    node --version; \
+    npm --version
+
+ENV PATH="${NODE_ROOT}/v${NODE_V22}/bin:${PATH}"
+
+# 3. Install common Python dependencies (kept in its own layer for cache reuse).
 #    --only-binary=:all: requires wheels for every package — source builds
 #    would fail without a compiler, so failing loudly here is preferable.
 #    When PRIVATE_PYPI_URL is set, also install tempo_oi from the private index
@@ -56,7 +90,7 @@ RUN --mount=type=secret,id=pypi_password \
     fi && \
     rm /tmp/requirements.txt
 
-# 3. Install Playwright and bake Chromium into the image.
+# 4. Install Playwright and bake Chromium into the image.
 #    --with-deps pulls the apt libraries Chromium needs at runtime (libnss3,
 #    libgbm1, libasound2, ...); without them the browser aborts at startup
 #    with a missing shared object. The browser binaries land in
@@ -71,11 +105,11 @@ RUN set -eux; \
     playwright install --with-deps chromium; \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip
 
-# 4. Drop bytecode caches left behind by the pip install above.
+# 5. Drop bytecode caches left behind by the pip install above.
 RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} + \
     && find /usr/local/lib/python3.12 -name "*.pyc" -delete
 
-# 5. Install DPI shared libraries. The zip lives in the `dpi` release asset
+# 6. Install DPI shared libraries. The zip lives in the `dpi` release asset
 #    (see https://github.com/FlowerBirds/opensandbox-runtime/releases/tag/dpi);
 #    downloading at build time keeps dpi.zip out of the build context and out
 #    of git. Override DPI_RELEASE_URL via --build-arg to point at a mirror.
