@@ -2,7 +2,7 @@
 
 - 日期：2026-11-16
 - 状态：待评审
-- 影响范围：`Dockerfile_runtime`、`Dockerfile_runtime.dockerignore`、`scripts/`、`tests/`、`README.md`、`README_zh.md`
+- 影响范围：`Dockerfile_runtime`、`Dockerfile_runtime.dockerignore`、`scripts/`、`tests/`、`.github/workflows/build.yml`、`README.md`、`README_zh.md`
 
 ## 1. 背景与目标
 
@@ -15,6 +15,7 @@ runtime 镜像（`ghcr.io/flowerbirds/opensandbox-runtime`）目前把 Python �
 1. 挂载目录下的 wheel 在容器启动时被安装，无需重建镜像
 2. 安装失败不能拖垮容器（沙箱仍要能用）
 3. 保持现有 `docker run <image> python` 等所有用法完全兼容
+4. 镜像携带构建日期等 OCI 标签，便于识别镜像批次
 
 ## 2. 非目标（YAGNI）
 
@@ -45,6 +46,7 @@ runtime 镜像（`ghcr.io/flowerbirds/opensandbox-runtime`）目前把 Python �
 | 安装目标 | 系统 Python 3.12 的 site-packages（`/usr/local/lib/python3.12/site-packages`） |
 | 脚本形态 | 双文件：独立的安装脚本 + 薄入口脚本 |
 | 安装目录 | **`/opt/install/pkgs`**（由 `/opt/installs/pkgs` 改名而来） |
+| 构建日期标签 | 用**实际构建时间**（UTC ISO-8601），写入 `org.opencontainers.image.created` |
 
 ## 5. 架构
 
@@ -216,6 +218,38 @@ CMD ["python"]
 !scripts/runtime-entrypoint.sh
 ```
 
+### 6.5 构建产物标签（`.github/workflows/build.yml`）
+
+目标：镜像带上可识别其构建批次的 OCI 标签，其中构建日期用**实际构建时间**（UTC ISO-8601）。
+
+改动一，新增一个计算时间戳的步骤（放在现有 "Resolve image name and release tag" 之后）：
+
+```yaml
+      - name: Resolve build timestamp
+        id: stamp
+        run: echo "stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+```
+
+改动二，"Build and push multi-arch image" 步骤的 `labels` 扩充为：
+
+```yaml
+          labels: |
+            org.opencontainers.image.title=opensandbox-runtime
+            org.opencontainers.image.description=Minimal runtime image with Python 3.12, Node.js 22 and Playwright Chromium
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
+```
+
+改动三，"Build multi-arch tarball" 步骤（离线包附件）同样传入这组 `labels`，保证用户 `docker load` 出来的镜像同样带标签，且 `created` 与推送的镜像一致（复用同一个 `stamp`）。
+
+说明：
+
+- 标签只改镜像 config，不产生文件层，不影响 `cache-from/cache-to: type=gha` 的层缓存命中率
+- `Dockerfile_runtime` **不**加 `LABEL` 指令 —— 标签统一由 CI 注入，避免本地构建与 CI 构建出现两套标签来源
+- `offline-bundle.yml` 从 registry 拉取 `:latest` 再导出，标签随镜像 config 一并保留，无需改动
+
 ## 7. 数据流
 
 1. 宿主把 wheel 目录挂载到 `/opt/install/pkgs`
@@ -256,6 +290,12 @@ CMD ["python"]
 - `docker buildx build -f Dockerfile_runtime` 成功 → 验证 dockerignore 改动未破坏构建上下文
 - 镜像内 `docker run --rm <image> python -c "import numpy"` 正常
 - 挂载 wheel 后 `docker run --rm -v <dir>:/opt/install/pkgs <image> python -c "import <pkg>"` 生效
+- 标签落地校验：
+
+  ```bash
+  docker inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' <image>
+  # 期望：2026-11-16T15:04:22Z 形式的 UTC ISO-8601
+  ```
 
 ## 10. 文档
 
@@ -272,6 +312,7 @@ CMD ["python"]
 - 目录约定、离线依赖解析规则、失败不阻断的行为
 - `RUNTIME_SKIP_INSTALL=1` 跳过开关
 - 容器运行中手动重装：`docker exec -it <container> install-pkgs.sh`
+- 镜像标签：如何用 `docker inspect` 查看构建日期
 
 ## 11. 取舍与已知限制
 
@@ -281,9 +322,11 @@ CMD ["python"]
 | 逐个安装而非一次装全部 | 目录内同时存在新旧版本时，批量安装会触发 pip 版本冲突；逐个安装还能做到单包失败不影响其他包 |
 | 依赖只从本地目录解析 | 内网/离线部署下访问公网索引会卡在连接超时；镜像已自带常用依赖，缺的依赖显式补 wheel 即可 |
 | 安装到系统 site-packages 而非 `PYTHONPATH` 目录 | 标准 import 路径，无需额外配置；`PYTHONPATH=/opt/python/pkgs` 仍保留给宿主挂载纯目录型包的场景 |
+| 标签只由 CI 注入，`Dockerfile_runtime` 不写 `LABEL` | 单一来源，避免本地构建与 CI 构建两套标签；标签只改 image config，不产生文件层，不影响 `type=gha` 层缓存命中率 |
 
 已知限制：
 
 - 每台机器、每次启动都要重装一遍挂载的 wheel（容器可写层是全新的），启动有额外开销（本地文件，通常 1～3 秒）
 - wheel 与镜像内已有包存在依赖冲突时，安装失败并降级为告警
 - 用户用 `--entrypoint` 覆盖时安装被跳过
+- `created` 标签用实际构建时间，因此**每次构建产出的镜像 digest 都不同**（即使内容完全一致）；需要按内容比对时用 `org.opencontainers.image.revision`
