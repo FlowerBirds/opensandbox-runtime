@@ -159,13 +159,15 @@ log "done: ${ok} succeeded, ${failed} failed"
 
 set -uo pipefail
 
+INSTALL_PKGS_BIN="${INSTALL_PKGS_BIN:-/usr/local/bin/install-pkgs.sh}"
+
 skip="$(printf '%s' "${RUNTIME_SKIP_INSTALL:-0}" | tr '[:upper:]' '[:lower:]')"
 case "$skip" in
 1 | true | yes | on)
 	printf '[runtime-entrypoint] RUNTIME_SKIP_INSTALL set, skipping package installation\n'
 	;;
 *)
-	if ! /usr/local/bin/install-pkgs.sh; then
+	if ! "$INSTALL_PKGS_BIN"; then
 		printf '[runtime-entrypoint] WARN: package installation failed, continuing anyway\n' >&2
 	fi
 	;;
@@ -178,6 +180,8 @@ fi
 printf '[runtime-entrypoint] ERROR: no command given\n' >&2
 exit 1
 ```
+
+`INSTALL_PKGS_BIN` 默认指向镜像内的绝对路径 `/usr/local/bin/install-pkgs.sh`，仅供测试注入 stub 使用，容器内无需设置。
 
 ### 6.3 `Dockerfile_runtime` 改动
 
@@ -250,6 +254,17 @@ CMD ["python"]
 - `Dockerfile_runtime` **不**加 `LABEL` 指令 —— 标签统一由 CI 注入，避免本地构建与 CI 构建出现两套标签来源
 - `offline-bundle.yml` 从 registry 拉取 `:latest` 再导出，标签随镜像 config 一并保留，无需改动
 
+改动四，在构建步骤之前加一个测试步骤，让两个 bash 测试脚本真正在 CI 中跑起来（否则测试不会被执行）：
+
+```yaml
+      - name: Run startup script tests
+        run: |
+          bash tests/test_install_pkgs.sh
+          bash tests/test_runtime_entrypoint.sh
+```
+
+测试脚本只依赖 bash 与 coreutils，不需要 Docker，因此这一步在 GitHub 托管 runner 上秒级完成。
+
 ## 7. 数据流
 
 1. 宿主把 wheel 目录挂载到 `/opt/install/pkgs`
@@ -285,22 +300,28 @@ CMD ["python"]
 | 5 | 空目录（无 wheel） | 不调用 pip，正常退出 |
 | 6 | 参数透传 | 入口脚本后的参数原样传给被 exec 的命令 |
 
-构建验证（需 CI，因本机无 Docker）：
+构建验证：**镜像不在本地构建**（本机无容器工具），推送 `main` 后由 GitHub Actions 构建并推送。CI 构建本身即验证：
 
-- `docker buildx build -f Dockerfile_runtime` 成功 → 验证 dockerignore 改动未破坏构建上下文
-- 镜像内 `docker run --rm <image> python -c "import numpy"` 正常
-- 挂载 wheel 后 `docker run --rm -v <dir>:/opt/install/pkgs <image> python -c "import <pkg>"` 生效
-- 标签落地校验：
+- 构建上下文改动是否生效（`COPY` 失败会直接让构建失败）
+- `Run startup script tests` 步骤中的两个测试脚本通过
 
-  ```bash
-  docker inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' <image>
-  # 期望：2026-11-16T15:04:22Z 形式的 UTC ISO-8601
-  ```
+镜像落地后的行为（供使用方按需验证）：
+
+```bash
+# 挂载 wheel 后自动安装
+docker run --rm -v /host/pkgs:/opt/install/pkgs <image> python -c "import mypkg"
+# 构建标签
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' <image>
+# 期望：2026-11-16T15:04:22Z 形式的 UTC ISO-8601
+```
 
 ## 10. 文档
 
-`README_zh.md` / `README.md` 增加「启动时安装本地 wheel」小节，说明：
+注意：现有 `README_zh.md` / `README.md` 描述的是 **code-interpreter 镜像**（Ubuntu 24.04、多语言、Jupyter），不是 runtime 镜像。因此在两份 README 中新增一个独立的 **「Runtime 镜像（opensandbox-runtime）」** 章节来承载本功能的说明，而不是塞进 code-interpreter 的「高级用法」里。
 
+章节内容：
+
+- runtime 镜像定位（Python 3.12 + Node 22 + Playwright Chromium，`python:3.12-slim` 底座）与拉取方式
 - 挂载用法：
 
   ```bash
