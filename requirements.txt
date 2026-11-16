@@ -15,6 +15,7 @@ openpyxl>=3.1
 python-docx>=1.1      # Word (.docx)
 python-pptx>=0.6      # PowerPoint (.pptx)
 markitdown[all]>=0.1  # Office/PDF/Image/Audio/Email -> Markdown (全部可选依赖)
+PyMuPDF>=1.24         # PDF 解析 / 渲染 (fitz), 比 pdfminer.six 快
 PyYAML                # YAML config files
 
 # --- Database ---

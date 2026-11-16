@@ -23,7 +23,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/opt/python/pkgs:${PYTHONPATH}
+    PYTHONPATH=/opt/python/pkgs:${PYTHONPATH} \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 
 # 1. Install common tools. No build-essential (we only install from wheels via
 #    --only-binary=:all: below), so no C compiler toolchain is needed.
@@ -55,11 +56,26 @@ RUN --mount=type=secret,id=pypi_password \
     fi && \
     rm /tmp/requirements.txt
 
-# 3. Drop bytecode caches left behind by the pip install above.
+# 3. Install Playwright and bake Chromium into the image.
+#    --with-deps pulls the apt libraries Chromium needs at runtime (libnss3,
+#    libgbm1, libasound2, ...); without them the browser aborts at startup
+#    with a missing shared object. The browser binaries land in
+#    ${PLAYWRIGHT_BROWSERS_PATH} (/opt/ms-playwright) so the image ships
+#    without any download step at runtime.
+#    The playwright package version is pinned: the bundled browser revision
+#    must match the package, and `playwright install` always fetches the
+#    revision matching the installed version.
+ARG PLAYWRIGHT_VERSION=1.65.2
+RUN set -eux; \
+    pip install --only-binary=:all: --no-cache-dir "playwright==${PLAYWRIGHT_VERSION}"; \
+    playwright install --with-deps chromium; \
+    rm -rf /var/lib/apt/lists/* /root/.cache/pip
+
+# 4. Drop bytecode caches left behind by the pip install above.
 RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} + \
     && find /usr/local/lib/python3.12 -name "*.pyc" -delete
 
-# 4. Install DPI shared libraries. The zip lives in the `dpi` release asset
+# 5. Install DPI shared libraries. The zip lives in the `dpi` release asset
 #    (see https://github.com/FlowerBirds/opensandbox-runtime/releases/tag/dpi);
 #    downloading at build time keeps dpi.zip out of the build context and out
 #    of git. Override DPI_RELEASE_URL via --build-arg to point at a mirror.
