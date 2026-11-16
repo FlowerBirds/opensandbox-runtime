@@ -42,6 +42,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 2. Install Node.js 22 (LTS). The upstream tarball is used rather than a
 #    distro package so the version matches what users expect. The .tar.gz
 #    variant is used because the slim image has no xz-utils.
+#    PATH is set before the install so the sanity checks below can run node
+#    and npm (npm's shebang needs node on PATH).
+ENV PATH="${NODE_ROOT}/v${NODE_V22}/bin:${PATH}"
+
 ARG TARGETARCH
 RUN set -eux; \
     ARCH=""; \
@@ -63,8 +67,6 @@ RUN set -eux; \
     mv "${NODE_ROOT}/node-v${NODE_V22}-linux-${ARCH}" "${NODE_ROOT}/v${NODE_V22}"; \
     node --version; \
     npm --version
-
-ENV PATH="${NODE_ROOT}/v${NODE_V22}/bin:${PATH}"
 
 # 3. Install common Python dependencies (kept in its own layer for cache reuse).
 #    --only-binary=:all: requires wheels for every package — source builds
