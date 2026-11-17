@@ -1,6 +1,6 @@
 # Runtime 镜像启动时安装本地 wheel + 构建日期标签 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 让 runtime 镜像在容器启动时把 `/opt/install/pkgs` 下的 wheel 装进系统 Python（换包不用重建镜像），并给镜像加上含实际构建时间的 OCI 标签。
 
@@ -44,7 +44,7 @@
 - Create: `tests/test_install_pkgs.sh`
 - Create: `scripts/install-pkgs.sh`
 
-- [ ] **Step 1: 写失败测试 `tests/test_install_pkgs.sh`**
+- [x] **Step 1: 写失败测试 `tests/test_install_pkgs.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -159,12 +159,12 @@ grep -q '1 succeeded, 1 failed' "$sandbox/out.log" ||
 echo "OK: all install-pkgs tests passed"
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 Run: `bash tests/test_install_pkgs.sh`
 Expected: FAIL —— 脚本不存在，报 `No such file or directory`（`bash` 找不到 `scripts/install-pkgs.sh`）
 
-- [ ] **Step 3: 实现 `scripts/install-pkgs.sh`**
+- [x] **Step 3: 实现 `scripts/install-pkgs.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -242,12 +242,12 @@ log "done: ${ok} succeeded, ${failed} failed"
 [ "$failed" -eq 0 ]
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `bash tests/test_install_pkgs.sh`
 Expected: 输出 `OK: all install-pkgs tests passed`，退出码 0
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add scripts/install-pkgs.sh tests/test_install_pkgs.sh
@@ -262,7 +262,7 @@ git commit -m "feat(runtime): 新增启动时安装本地 wheel 的脚本"
 - Create: `tests/test_runtime_entrypoint.sh`
 - Create: `scripts/runtime-entrypoint.sh`
 
-- [ ] **Step 1: 写失败测试 `tests/test_runtime_entrypoint.sh`**
+- [x] **Step 1: 写失败测试 `tests/test_runtime_entrypoint.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -376,12 +376,12 @@ grep -q '^exec-target python -c print(1)$' "$call_log" ||
 echo "OK: all runtime-entrypoint tests passed"
 ```
 
-- [ ] **Step 2: 运行测试，确认失败**
+- [x] **Step 2: 运行测试，确认失败**
 
 Run: `bash tests/test_runtime_entrypoint.sh`
 Expected: FAIL —— 找不到 `scripts/runtime-entrypoint.sh`
 
-- [ ] **Step 3: 实现 `scripts/runtime-entrypoint.sh`**
+- [x] **Step 3: 实现 `scripts/runtime-entrypoint.sh`**
 
 ```bash
 #!/usr/bin/env bash
@@ -428,12 +428,12 @@ printf '[runtime-entrypoint] ERROR: no command given\n' >&2
 exit 1
 ```
 
-- [ ] **Step 4: 运行测试，确认通过**
+- [x] **Step 4: 运行测试，确认通过**
 
 Run: `bash tests/test_runtime_entrypoint.sh`
 Expected: 输出 `OK: all runtime-entrypoint tests passed`，退出码 0
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add scripts/runtime-entrypoint.sh tests/test_runtime_entrypoint.sh
@@ -448,7 +448,7 @@ git commit -m "feat(runtime): 新增镜像启动入口脚本"
 - Modify: `Dockerfile_runtime`（在 step 6 的 DPI 注释块之后、`WORKDIR /workspace` 之前）
 - Modify: `Dockerfile_runtime.dockerignore`
 
-- [ ] **Step 1: 改 `Dockerfile_runtime.dockerignore`**
+- [x] **Step 1: 改 `Dockerfile_runtime.dockerignore`**
 
 替换整个文件内容为：
 
@@ -463,7 +463,7 @@ git commit -m "feat(runtime): 新增镜像启动入口脚本"
 
 > `!scripts` 不能省：Docker 的排除规则里，父目录被排除时无法重新包含其子文件。副作用是 `scripts/` 下其他文件（`code-interpreter.sh` 等）也可能进入构建上下文 —— 只是多几 KB，不影响构建结果。若 CI 报 `COPY` 找不到源文件，改用回退方案（见 Step 4）。
 
-- [ ] **Step 2: 改 `Dockerfile_runtime`**
+- [x] **Step 2: 改 `Dockerfile_runtime`**
 
 在 DPI 注释块（`#     rm -f /tmp/dpi.zip`）之后、`WORKDIR /workspace` 之前插入：
 
@@ -481,7 +481,7 @@ ENTRYPOINT ["/usr/local/bin/runtime-entrypoint.sh"]
 CMD ["python"]
 ```
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add Dockerfile_runtime Dockerfile_runtime.dockerignore
@@ -516,7 +516,7 @@ git commit -m "feat(runtime): 镜像接入启动时安装 wheel 的入口脚本"
 **Files:**
 - Modify: `.github/workflows/build.yml`
 
-- [ ] **Step 1: 新增构建时间戳步骤**
+- [x] **Step 1: 新增构建时间戳步骤**
 
 在 `Resolve image name and release tag` 步骤之后、`Set up QEMU` 之前插入：
 
@@ -526,7 +526,7 @@ git commit -m "feat(runtime): 镜像接入启动时安装 wheel 的入口脚本"
         run: echo "stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 ```
 
-- [ ] **Step 2: 扩充推送镜像的标签**
+- [x] **Step 2: 扩充推送镜像的标签**
 
 把 `Build and push multi-arch image` 步骤里的 `labels:` 整块替换为：
 
@@ -540,7 +540,7 @@ git commit -m "feat(runtime): 镜像接入启动时安装 wheel 的入口脚本"
             org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
 ```
 
-- [ ] **Step 3: tarball 构建步骤也带上同一组标签**
+- [x] **Step 3: tarball 构建步骤也带上同一组标签**
 
 在 `Build multi-arch tarball` 步骤的 `with:` 里，把 `outputs:` 之后补上 `labels:`（其余键不动）：
 
@@ -555,7 +555,7 @@ git commit -m "feat(runtime): 镜像接入启动时安装 wheel 的入口脚本"
             org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
 ```
 
-- [ ] **Step 4: 构建前跑测试**
+- [x] **Step 4: 构建前跑测试**
 
 在 `Login to GHCR` 步骤之后、`Build and push multi-arch image` 之前插入：
 
@@ -568,7 +568,7 @@ git commit -m "feat(runtime): 镜像接入启动时安装 wheel 的入口脚本"
 
 > 放在 `Login to GHCR` 之后是为了让测试失败在登录之后、构建之前 —— 构建耗时最长，测试挂在前面能更快暴露问题。
 
-- [ ] **Step 5: 本地校验 YAML 语法**
+- [x] **Step 5: 本地校验 YAML 语法**
 
 Run:
 ```bash
@@ -589,7 +589,7 @@ print('workflow OK')
 ```
 Expected: 输出 `workflow OK`
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add .github/workflows/build.yml
@@ -606,7 +606,7 @@ git commit -m "ci: runtime 镜像补充构建日期标签并在构建前跑测�
 
 > 两份 README 现在描述的是 **code-interpreter 镜像**，所以要新开一个独立章节，不要混进 code-interpreter 的「高级用法」。
 
-- [ ] **Step 1: 在 `README_zh.md` 的「## 快速开始」之前插入 runtime 镜像章节**
+- [x] **Step 1: 在 `README_zh.md` 的「## 快速开始」之前插入 runtime 镜像章节**
 
 （`## 快速开始` 之前是 `## 支持的语言与版本` 表格及其后的注意事项段落）
 
@@ -663,7 +663,7 @@ docker inspect --format '{{index .Config.Labels "org.opencontainers.image.create
 > 它是触发构建的 commit SHA。
 ```
 
-- [ ] **Step 2: 在 `README.md` 写对应的英文章节**
+- [x] **Step 2: 在 `README.md` 写对应的英文章节**
 
 放在 `## Quick Start` 之前，标题与内容对应上面中文章节：
 
@@ -722,7 +722,7 @@ docker inspect --format '{{index .Config.Labels "org.opencontainers.image.create
 > `org.opencontainers.image.revision` — the commit SHA that triggered the build.
 ```
 
-- [ ] **Step 3: 检查 Markdown 围栏配对**
+- [x] **Step 3: 检查 Markdown 围栏配对**
 
 Run:
 ```bash
@@ -734,7 +734,7 @@ for f in ('README.md', 'README_zh.md'):
 ```
 Expected: 两个文件都输出 `balanced`
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add README.md README_zh.md
@@ -748,17 +748,17 @@ git commit -m "docs: 补充 runtime 镜像启动时安装 wheel 与构建标签�
 > 本机没有容器工具，镜像**不在本地构建** —— 推送 `main` 后由 GitHub Actions 构建并推送。
 > 因此本任务只负责把改动推到远端触发构建；镜像层面的行为验证交给 CI 与使用方。
 
-- [ ] **Step 1: 确认工作区干净、提交完整**
+- [x] **Step 1: 确认工作区干净、提交完整**
 
 Run: `git status --short && git log --oneline -6`
 Expected: `git status --short` 无输出；日志里能看到本计划的 5 个提交
 
-- [ ] **Step 2: 推送（对外动作，执行前确认用户同意）**
+- [x] **Step 2: 推送（对外动作，执行前确认用户同意）**
 
 Run: `git push origin main`
 Expected: push 成功，`.github/workflows/build.yml`（`Build and Push Runtime Image`）被触发
 
-- [ ] **Step 3: 确认 CI 结果**
+- [x] **Step 3: 确认 CI 结果**
 
 在 GitHub Actions 页面确认 `Build and Push Runtime Image / build` 作业：
 
