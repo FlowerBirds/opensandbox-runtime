@@ -113,11 +113,6 @@ jobs:
             org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            PRIVATE_PYPI_URL=${{ vars.PRIVATE_PYPI_URL }}
-            PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
-          secrets: |
-            pypi_password=${{ secrets.PRIVATE_PYPI_PASSWORD }}
 
       # ---- Optional release asset: only on v* tag push or workflow_dispatch --release ----
       - name: Decide whether to publish a release
@@ -148,11 +143,6 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
             org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
-          build-args: |
-            PRIVATE_PYPI_URL=${{ vars.PRIVATE_PYPI_URL }}
-            PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
-          secrets: |
-            pypi_password=${{ secrets.PRIVATE_PYPI_PASSWORD }}
 
       - name: Compress with zstd
         if: steps.relcond.outputs.should_release == 'true'
@@ -207,7 +197,6 @@ jobs:
             - **预装 Python 包**：`numpy`、`pandas`、`openpyxl`、`python-docx`、`python-pptx`、`markitdown`、`firecrawl-anydoc`、`Pillow`、`matplotlib`、`PyMuPDF`、`PyYAML`、`SQLAlchemy`、`PyMySQL`、`gmssl`（国密）、`requests`、`httpx`、`psutil`、`tqdm` 等
             - **预装 Node.js**：`22.23.5`（LTS，位于 `/opt/node/v22.23.5`，`node`/`npm` 已在 PATH 中）
             - **预装浏览器**：`playwright` + Chromium（位于 `/opt/ms-playwright`，已随镜像打包，无需运行时下载）
-            - **私有包**：`tempo_oi`（如需使用请配置 `PRIVATE_PYPI_*` 变量/密钥后自行构建）
           generate_release_notes: true
           files: opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
         env:

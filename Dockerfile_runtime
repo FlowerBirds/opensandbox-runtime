@@ -71,25 +71,9 @@ RUN set -eux; \
 # 3. Install common Python dependencies (kept in its own layer for cache reuse).
 #    --only-binary=:all: requires wheels for every package — source builds
 #    would fail without a compiler, so failing loudly here is preferable.
-#    When PRIVATE_PYPI_URL is set, also install tempo_oi from the private index
-#    in the same RUN (no extra layer). Credentials come from a BuildKit secret
-#    mounted at /run/secrets/pypi_password — never persisted in any image layer.
 COPY requirements.txt /tmp/requirements.txt
-ARG PRIVATE_PYPI_URL=""
-ARG PRIVATE_PYPI_USERNAME=""
-RUN --mount=type=secret,id=pypi_password \
-    pip install --upgrade --no-cache-dir pip setuptools wheel && \
+RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
     pip install --only-binary=:all: --no-cache-dir -r /tmp/requirements.txt && \
-    if [ -n "${PRIVATE_PYPI_URL}" ]; then \
-        HOST="${PRIVATE_PYPI_URL#http://}"; \
-        HOST="${HOST#https://}"; \
-        TRUSTED_HOST="${HOST%%:*}"; \
-        pip install --only-binary=:all: --no-cache-dir \
-            --index-url https://pypi.org/simple \
-            --extra-index-url "http://${PRIVATE_PYPI_USERNAME}:$(cat /run/secrets/pypi_password)@${HOST}/simple" \
-            --trusted-host "${TRUSTED_HOST}" \
-            tempo_oi; \
-    fi && \
     rm /tmp/requirements.txt
 
 # 4. Install Playwright and bake Chromium into the image.

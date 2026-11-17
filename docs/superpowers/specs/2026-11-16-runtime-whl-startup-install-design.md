@@ -22,7 +22,7 @@ runtime 镜像（`ghcr.io/flowerbirds/opensandbox-runtime`）目前把 Python �
 - 不递归扫描子目录
 - 不支持 `.tar.gz` 源码包、`requirements.txt`、`setup.py`
 - 不落盘安装清单 / 安装状态文件
-- 不配置私有 PyPI 源（私有源能力已由构建期的 `PRIVATE_PYPI_*` 提供）
+- 不配置私有 PyPI 源（镜像构建期已不再连接任何私有索引，只用 PyPI 公共源）
 - 不改动 `code-interpreter` 镜像（`Dockerfile` / `Dockerfile_base`）
 
 ## 3. 现状
