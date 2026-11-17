@@ -1,3 +1,6 @@
 **
 !Dockerfile_runtime
 !requirements.txt
+!scripts
+!scripts/install-pkgs.sh
+!scripts/runtime-entrypoint.sh

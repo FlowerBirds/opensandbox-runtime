@@ -122,6 +122,16 @@ RUN find /usr/local/lib/python3.12 -type d -name "__pycache__" -exec rm -rf {} +
 #     unzip -o /tmp/dpi.zip -d /opt; \
 #     rm -f /tmp/dpi.zip
 
+# 7. Startup hooks. The entrypoint installs every wheel found in
+#    /opt/install/pkgs (normally a mounted directory) before handing over to
+#    the container command, so frequently updated packages can be delivered
+#    without rebuilding the image. With nothing mounted the install step is a
+#    no-op and the container behaves exactly as before.
+COPY scripts/install-pkgs.sh scripts/runtime-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/install-pkgs.sh /usr/local/bin/runtime-entrypoint.sh \
+    && mkdir -p /opt/install/pkgs
+
 WORKDIR /workspace
 
+ENTRYPOINT ["/usr/local/bin/runtime-entrypoint.sh"]
 CMD ["python"]
