@@ -64,6 +64,22 @@ run_entrypoint() {
 
 last_exit() { cat "$sandbox/last-exit"; }
 
+# Same as run_entrypoint, but kills the script after N seconds. Used for the
+# case where the entrypoint is expected to stay alive: `timeout` reports 124
+# when it had to kill the command.
+run_entrypoint_timeout() {
+	local secs="$1"
+	shift
+	: >"$call_log"
+	local rc=0
+	CALL_LOG="$call_log" \
+		INSTALL_PKGS_BIN="$sandbox/install-pkgs.sh" \
+		INSTALL_STUB_EXIT="$install_exit" \
+		RUNTIME_SKIP_INSTALL="$skip_install" \
+		timeout "$secs" bash "$script" "$@" >"$sandbox/out.log" 2>"$sandbox/err.log" || rc=$?
+	echo "$rc" >"$sandbox/last-exit"
+}
+
 # The entrypoint must not pollute stdout either: the container's stdout is
 # the data channel the sandbox server collects.
 assert_stdout_clean() {
@@ -132,16 +148,17 @@ for value in 1 true yes on TRUE Yes ON; do
 done
 skip_install=""
 
-# --- Case 6: no command at all -> install only, exit 0 -----------------
-# The orchestrator may use this script as an "install only" hook (Cmd
-# position, no command). It must not fail: the packages are installed and a
-# non-zero exit would abort a caller running with `set -e`.
-run_entrypoint
-[ "$(last_exit)" = "0" ] || fail "expected exit 0 when no command is given, got $(last_exit)"
+# --- Case 6: no command at all -> install, then stay alive --------------
+# The orchestrator may put this script itself in the Cmd position. It is then
+# PID 1 of the container, so it must NOT exit -- that would stop the whole
+# container. It has to keep running instead.
+run_entrypoint_timeout 2
+[ "$(last_exit)" = "124" ] ||
+	fail "expected the entrypoint to keep running (timeout 124), got $(last_exit)"
 grep -q '^install-pkgs' "$call_log" ||
 	fail "expected the install script to still run when no command is given"
 grep -q 'no container command given' "$sandbox/err.log" ||
-	fail "expected a log line about exiting after installation"
+	fail "expected a log line about staying alive"
 if grep -q '^exec-target' "$call_log"; then
 	fail "expected no command to be executed when none was given"
 fi

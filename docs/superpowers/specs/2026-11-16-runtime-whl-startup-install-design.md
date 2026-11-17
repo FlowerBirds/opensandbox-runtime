@@ -177,13 +177,15 @@ if [ "$#" -gt 0 ]; then
 	exec "$@"
 fi
 
-printf '[runtime-entrypoint] no container command given, exiting after installation\n' >&2
-exit 0
+# 无命令：编排方把本脚本本身放在容器的 Cmd 位置，此时它是 PID 1，
+# 退出就会带走整个容器，所以装完包后阻塞住。
+printf '[runtime-entrypoint] no container command given, staying alive\n' >&2
+exec tail -f /dev/null
 ```
 
 `INSTALL_PKGS_BIN` 默认指向镜像内的绝对路径 `/usr/local/bin/install-pkgs.sh`，仅供测试注入 stub 使用，容器内无需设置。
 
-**无命令时的行为**：编排方可能把本脚本放在容器的 `Cmd` 位置、且不带任何命令，当作「只装包的钩子」使用。这种情况下装包已经完成，退出码为 **0** 而不是错误——非 0 退出会让带 `set -e` 的调用方直接中止。
+**无命令时的行为**：编排方可能把本脚本本身放在容器的 `Cmd` 位置（此时它是 PID 1），且不带任何命令。这种情况下装包已经完成，脚本**不能退出**——退出就会带走整个容器——而是执行 `exec tail -f /dev/null` 阻塞常驻。
 
 ### 6.3 `Dockerfile_runtime` 改动
 
@@ -300,7 +302,7 @@ CMD ["python"]
 | 所有 wheel 都失败 | 同上，汇总显示 0 成功 / N 失败 | 是 |
 | 用户显式 `--entrypoint` 覆盖 | 整个脚本不执行（预期行为） | 是（不安装） |
 | `RUNTIME_SKIP_INSTALL=1` | 跳过安装，直接 `exec "$@"` | 是 |
-| 未传任何命令（被当作「只装包」钩子调用） | 装包完成后 INFO 一行，exit 0 | 不适用（调用方决定后续） |
+| 未传任何命令（脚本被放在 Cmd 位置、成为 PID 1） | 装包完成后 INFO 一行，然后 `exec tail -f /dev/null` 阻塞常驻 | 是（容器保持运行） |
 
 设计取向：**安装失败永远不阻断容器启动**。沙箱可用性优先于单个辅助包的成功与否。
 

@@ -19,11 +19,10 @@
 #
 #   1. As the image ENTRYPOINT with the container command in "$@":
 #      install the wheels, then `exec "$@"`.
-#   2. As an "install only" hook, i.e. the orchestrator puts this script in
-#      the Cmd position and passes no command: install the wheels, then exit 0.
-#      Reporting an error here would abort a caller that runs with `set -e`,
-#      so a missing command is not a failure -- the packages are installed
-#      either way.
+#   2. As the command the orchestrator wants to run, i.e. the script is put in
+#      the Cmd position and passes no further command: install the wheels,
+#      then stay alive. The script is PID 1 in that case, so exiting would
+#      stop the whole container -- block instead.
 #
 # The install step never blocks container startup: a failure is logged as a
 # warning and the container command still runs.
@@ -55,5 +54,8 @@ if [ "$#" -gt 0 ]; then
 	exec "$@"
 fi
 
-printf '[runtime-entrypoint] no container command given, exiting after installation\n' >&2
-exit 0
+# No container command: the orchestrator put this script itself in the Cmd
+# position, so it is PID 1. Exiting here would stop the whole container, so
+# block instead -- the packages are installed either way.
+printf '[runtime-entrypoint] no container command given, staying alive\n' >&2
+exec tail -f /dev/null
