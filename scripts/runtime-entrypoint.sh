@@ -15,6 +15,16 @@
 
 # Install mounted wheels, then hand over to the container command.
 #
+# Two ways this script is used:
+#
+#   1. As the image ENTRYPOINT with the container command in "$@":
+#      install the wheels, then `exec "$@"`.
+#   2. As an "install only" hook, i.e. the orchestrator puts this script in
+#      the Cmd position and passes no command: install the wheels, then exit 0.
+#      Reporting an error here would abort a caller that runs with `set -e`,
+#      so a missing command is not a failure -- the packages are installed
+#      either way.
+#
 # The install step never blocks container startup: a failure is logged as a
 # warning and the container command still runs.
 #
@@ -45,5 +55,5 @@ if [ "$#" -gt 0 ]; then
 	exec "$@"
 fi
 
-printf '[runtime-entrypoint] ERROR: no command given\n' >&2
-exit 1
+printf '[runtime-entrypoint] no container command given, exiting after installation\n' >&2
+exit 0

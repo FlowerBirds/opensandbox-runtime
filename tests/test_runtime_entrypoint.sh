@@ -132,10 +132,19 @@ for value in 1 true yes on TRUE Yes ON; do
 done
 skip_install=""
 
-# --- Case 6: no command at all is an error ----------------------------
+# --- Case 6: no command at all -> install only, exit 0 -----------------
+# The orchestrator may use this script as an "install only" hook (Cmd
+# position, no command). It must not fail: the packages are installed and a
+# non-zero exit would abort a caller running with `set -e`.
 run_entrypoint
-[ "$(last_exit)" = "1" ] || fail "expected exit 1 when no command is given, got $(last_exit)"
-grep -q 'no command given' "$sandbox/err.log" ||
-	fail "expected an error line about the missing command"
+[ "$(last_exit)" = "0" ] || fail "expected exit 0 when no command is given, got $(last_exit)"
+grep -q '^install-pkgs' "$call_log" ||
+	fail "expected the install script to still run when no command is given"
+grep -q 'no container command given' "$sandbox/err.log" ||
+	fail "expected a log line about exiting after installation"
+if grep -q '^exec-target' "$call_log"; then
+	fail "expected no command to be executed when none was given"
+fi
+assert_stdout_clean
 
 echo "OK: all runtime-entrypoint tests passed"
