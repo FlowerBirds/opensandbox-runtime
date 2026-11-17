@@ -58,6 +58,10 @@ jobs:
           fi
           echo "tag=${TAG}" >>"$GITHUB_OUTPUT"
 
+      - name: Resolve build timestamp
+        id: stamp
+        run: echo "stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -71,6 +75,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The two startup scripts are copied into the image by step 7 of
+      # Dockerfile_runtime. A wrong .dockerignore rule would only surface as a
+      # COPY failure after ~14 minutes of image build, so the build context is
+      # checked up front with a scratch build that takes a couple of seconds.
+      - name: Preflight runtime scripts in build context
+        run: |
+          cp Dockerfile_runtime.dockerignore .dockerignore
+          trap 'rm -f .dockerignore' EXIT
+          printf 'FROM scratch\nCOPY scripts/install-pkgs.sh /a\nCOPY scripts/runtime-entrypoint.sh /b\n' \
+            | docker buildx build -f - .
+
+      # Only the two startup-script tests are run here:
+      # tests/test_code_interpreter_node_setup.sh belongs to the
+      # code-interpreter sandbox layout and cannot run in this repository.
+      - name: Run startup script tests
+        run: |
+          bash tests/test_install_pkgs.sh
+          bash tests/test_runtime_entrypoint.sh
+
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
@@ -83,8 +106,11 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
           labels: |
             org.opencontainers.image.title=opensandbox-runtime
+            org.opencontainers.image.description=Minimal runtime image with Python 3.12, Node.js 22 and Playwright Chromium
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -115,6 +141,13 @@ jobs:
           push: false
           load: false
           outputs: type=tar,dest=opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar
+          labels: |
+            org.opencontainers.image.title=opensandbox-runtime
+            org.opencontainers.image.description=Minimal runtime image with Python 3.12, Node.js 22 and Playwright Chromium
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.created=${{ steps.stamp.outputs.stamp }}
           build-args: |
             PRIVATE_PYPI_URL=${{ vars.PRIVATE_PYPI_URL }}
             PRIVATE_PYPI_USERNAME=${{ vars.PRIVATE_PYPI_USERNAME }}
