@@ -36,6 +36,7 @@
 - 预装：Python 3.12 常用包（numpy / pandas / openpyxl / python-docx / python-pptx /
   markitdown / firecrawl-anydoc / Pillow / matplotlib / PyMuPDF / SQLAlchemy /
   PyMySQL / gmssl 国密 等）、Node.js 22、Playwright + Chromium
+- 中文字体：已装入 `/usr/share/fonts/chinese`，matplotlib / PIL 出图可直接用中文
 - 入口：`python`（无参数启动进入 REPL）
 - 多架构：`linux/amd64` + `linux/arm64`
 

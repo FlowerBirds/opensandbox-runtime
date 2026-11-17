@@ -131,6 +131,33 @@ COPY scripts/install-pkgs.sh scripts/runtime-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/install-pkgs.sh /usr/local/bin/runtime-entrypoint.sh \
     && mkdir -p /opt/install/pkgs
 
+# 8. Chinese fonts. The archive lives in the `Chinese_fonts` release asset
+#    (see https://github.com/FlowerBirds/opensandbox-runtime/releases/tag/Chinese_fonts);
+#    downloading at build time keeps the zip out of the build context and out
+#    of git. Override CHINESE_FONTS_URL via --build-arg to point at a mirror.
+#
+#    mkfontscale/mkfontdir/fc-cache come from the fontconfig package, which is
+#    the Debian equivalent of the `yum install mkfontscale / fontconfig` route
+#    (this image is Debian-based, not RPM-based). The tools are on PATH
+#    already, so no `source /etc/profile` is needed.
+ARG CHINESE_FONTS_URL=https://github.com/FlowerBirds/opensandbox-runtime/releases/download/Chinese_fonts/Chinese_fonts.zip
+RUN set -eux; \
+    apt-get update && apt-get install -y --no-install-recommends fontconfig; \
+    rm -rf /var/lib/apt/lists/*; \
+    mkdir -p /usr/share/fonts/chinese; \
+    curl -fsSL -o /tmp/Chinese_fonts.zip "${CHINESE_FONTS_URL}"; \
+    unzip -o /tmp/Chinese_fonts.zip -d /usr/share/fonts/chinese; \
+    rm -f /tmp/Chinese_fonts.zip; \
+    find /usr/share/fonts/chinese -type f \( -name '*.ttf' -o -name '*.ttc' -o -name '*.otf' \) \
+        -exec chmod 755 {} +; \
+    if [ -z "$(find /usr/share/fonts/chinese -type f \( -name '*.ttf' -o -name '*.ttc' -o -name '*.otf' \) -print -quit)" ]; then \
+        echo "no font files found in ${CHINESE_FONTS_URL}" >&2; exit 1; \
+    fi; \
+    cd /usr/share/fonts/chinese; \
+    mkfontscale; \
+    mkfontdir; \
+    fc-cache -fv
+
 WORKDIR /workspace
 
 ENTRYPOINT ["/usr/local/bin/runtime-entrypoint.sh"]
