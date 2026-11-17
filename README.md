@@ -34,9 +34,10 @@ Besides the multi-language Code Interpreter image above, this repository also bu
 lean **runtime image** for sandbox execution environments:
 
 - Base image: `python:3.12-slim` (Debian 12)
-- Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / python-docx /
-  python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib / PyMuPDF /
-  SQLAlchemy / PyMySQL / gmssl ...), Node.js 22, Playwright + Chromium
+- Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / pyarrow /
+  python-docx / python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib /
+  PyMuPDF / SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl / cryptography ...),
+  Node.js 22, Playwright + Chromium
 - Chinese fonts: installed under `/usr/share/fonts/chinese`, so matplotlib / PIL
   can render Chinese text out of the box
 - Entry point: `python` (starts a REPL with no arguments)
