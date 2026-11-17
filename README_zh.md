@@ -34,8 +34,8 @@
 
 - 基础镜像：`python:3.12-slim`（Debian 12）
 - 预装：Python 3.12 常用包（numpy / pandas / openpyxl / python-docx / python-pptx /
-  markitdown / PyMuPDF / SQLAlchemy / PyMySQL / gmssl 国密 等）、Node.js 22、
-  Playwright + Chromium
+  markitdown / firecrawl-anydoc / Pillow / matplotlib / PyMuPDF / SQLAlchemy /
+  PyMySQL / gmssl 国密 等）、Node.js 22、Playwright + Chromium
 - 入口：`python`（无参数启动进入 REPL）
 - 多架构：`linux/amd64` + `linux/arm64`
 

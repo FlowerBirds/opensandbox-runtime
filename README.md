@@ -35,8 +35,8 @@ lean **runtime image** for sandbox execution environments:
 
 - Base image: `python:3.12-slim` (Debian 12)
 - Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / python-docx /
-  python-pptx / markitdown / PyMuPDF / SQLAlchemy / PyMySQL / gmssl ...), Node.js 22,
-  Playwright + Chromium
+  python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib / PyMuPDF /
+  SQLAlchemy / PyMySQL / gmssl ...), Node.js 22, Playwright + Chromium
 - Entry point: `python` (starts a REPL with no arguments)
 - Architectures: `linux/amd64` + `linux/arm64`
 

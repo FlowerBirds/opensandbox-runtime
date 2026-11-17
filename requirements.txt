@@ -11,10 +11,15 @@ numpy
 pandas
 openpyxl>=3.1
 
+# --- Image & plotting ---
+Pillow>=11.0          # 图像处理 / 缩放 / 格式转换
+matplotlib>=3.8       # 绘图 (图表 / 可视化)
+
 # --- Office documents ---
 python-docx>=1.1      # Word (.docx)
 python-pptx>=0.6      # PowerPoint (.pptx)
 markitdown[all]>=0.1  # Office/PDF/Image/Audio/Email -> Markdown (全部可选依赖)
+firecrawl-anydoc>=0.2 # doc/docx/odt/rtf/epub/pdf/演示/表格/csv -> Markdown
 PyMuPDF>=1.24         # PDF 解析 / 渲染 (fitz), 比 pdfminer.six 快
 PyYAML                # YAML config files
 
