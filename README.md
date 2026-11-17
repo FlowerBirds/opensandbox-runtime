@@ -28,6 +28,78 @@ The image comes pre-installed with the following languages and versions:
 
 *> Note: Version numbers may be updated to the latest patch versions at build time.*
 
+## Runtime image (opensandbox-runtime)
+
+Besides the multi-language Code Interpreter image above, this repository also builds a
+lean **runtime image** for sandbox execution environments:
+
+- Base image: `python:3.12-slim` (Debian 12)
+- Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / python-docx /
+  python-pptx / markitdown / PyMuPDF / SQLAlchemy / PyMySQL / gmssl ...), Node.js 22,
+  Playwright + Chromium
+- Entry point: `python` (starts a REPL with no arguments)
+- Architectures: `linux/amd64` + `linux/arm64`
+
+```bash
+docker pull ghcr.io/flowerbirds/opensandbox-runtime:latest
+docker run --rm -it ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+### Installing local wheels at startup
+
+Mount `.whl` files to `/opt/install/pkgs` and they are installed into the system
+Python when the container starts — useful when packages change often and rebuilding
+the image is too expensive:
+
+```bash
+docker run --rm -it \
+  -v /host/pkgs:/opt/install/pkgs \
+  ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+- Directory: `/opt/install/pkgs` (override with `RUNTIME_PKGS_DIR`); only top-level
+  `*.whl` files are considered (no recursion)
+- Dependency resolution is **fully offline** — pip only looks in that directory
+  (`--no-index --find-links`), so a missing dependency must be added there as a wheel too
+- A failed install **never blocks container startup**: the failing package is reported
+  in the log, the remaining packages are still installed, and the container starts
+- Install logs go to **stderr**; the container's stdout stays free for program output
+- Skip the install entirely with `RUNTIME_SKIP_INSTALL=1`
+- Every container start runs the install scan first (a no-op when the directory is
+  empty), which costs short-lived containers an extra second or two
+
+> **The same version is not reinstalled**: pip skips requirements that are already
+> satisfied, so dropping in a wheel with the *same version number* has no effect.
+> To force a reinstall, run pip directly in the container:
+>
+> ```bash
+> docker exec -it <container> pip install --force-reinstall --no-deps /opt/install/pkgs/<pkg>.whl
+> ```
+>
+> Or publish a new version number.
+
+To apply newly mounted wheels to a running container, no restart is needed:
+
+```bash
+docker exec -it <container> install-pkgs.sh
+```
+
+> Processes started with `docker exec` do not go through the image entrypoint, and
+> **already imported modules are not hot-reloaded** — newly installed packages take
+> effect in *newly started* processes.
+
+### Inspecting the build
+
+The image carries OCI labels; `org.opencontainers.image.created` is the build time (UTC):
+
+```bash
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' \
+  ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+> To compare images by content rather than by build batch, use
+> `org.opencontainers.image.revision` — the commit SHA that triggered the build.
+
 ## Quick Start
 
 ### 1. Build the Image

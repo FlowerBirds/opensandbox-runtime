@@ -27,6 +27,73 @@
 
 *> 注意: 版本号可能会随构建时间更新至小版本的最新版。*
 
+## Runtime 镜像（opensandbox-runtime）
+
+除了上面这个多语言 Code Interpreter 镜像，本仓库还构建一个精简的 **runtime 镜像**，
+用于沙箱执行环境：
+
+- 基础镜像：`python:3.12-slim`（Debian 12）
+- 预装：Python 3.12 常用包（numpy / pandas / openpyxl / python-docx / python-pptx /
+  markitdown / PyMuPDF / SQLAlchemy / PyMySQL / gmssl 国密 等）、Node.js 22、
+  Playwright + Chromium
+- 入口：`python`（无参数启动进入 REPL）
+- 多架构：`linux/amd64` + `linux/arm64`
+
+```bash
+docker pull ghcr.io/flowerbirds/opensandbox-runtime:latest
+docker run --rm -it ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+### 启动时安装本地 wheel
+
+把 `.whl` 挂载到 `/opt/install/pkgs`，容器启动时会自动把它们装进系统 Python。
+适合包更新频繁、不想每次都重新构建镜像的场景：
+
+```bash
+docker run --rm -it \
+  -v /host/pkgs:/opt/install/pkgs \
+  ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+- 目录约定：`/opt/install/pkgs`（可用 `RUNTIME_PKGS_DIR` 改），只看该目录**顶层**的
+  `*.whl`，不递归子目录
+- 依赖解析：**完全离线** —— pip 只从该目录找依赖（`--no-index --find-links`），
+  缺失的依赖需要在同目录补上对应 wheel
+- 安装失败**不会阻断容器启动**：失败的包会在日志里报错，其余包继续装，容器照常运行
+- 安装日志全部走 **stderr**，容器 stdout 只保留程序自己的输出
+- 跳过安装：设置 `RUNTIME_SKIP_INSTALL=1`
+- 每次容器启动都会先跑一次安装扫描（目录为空时是空操作），短命容器会多付 1~3 秒
+
+> **同版本不会重装**：pip 对已满足的 requirement 直接跳过，所以重新打一个**同版本号**
+> 的 wheel 覆盖上去是不会生效的。要强制重装，在容器里直接执行：
+>
+> ```bash
+> docker exec -it <container> pip install --force-reinstall --no-deps /opt/install/pkgs/<pkg>.whl
+> ```
+>
+> 或者改用新的版本号。
+
+容器运行中换完 wheel 想立刻生效，无需重启：
+
+```bash
+docker exec -it <container> install-pkgs.sh
+```
+
+> `docker exec` 起的进程不经过镜像入口脚本，且**已经 import 过的模块不会热更新** ——
+> 新装的包对**新启动**的进程生效。
+
+### 查看镜像构建信息
+
+镜像带 OCI 标签，其中 `org.opencontainers.image.created` 是本次构建的时间（UTC）：
+
+```bash
+docker inspect --format '{{index .Config.Labels "org.opencontainers.image.created"}}' \
+  ghcr.io/flowerbirds/opensandbox-runtime:latest
+```
+
+> 需要按内容（而非构建批次）比对镜像时，用 `org.opencontainers.image.revision`，
+> 它是触发构建的 commit SHA。
+
 ## 快速开始
 
 ### 1. 构建镜像

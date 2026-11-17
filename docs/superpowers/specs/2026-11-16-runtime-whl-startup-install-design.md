@@ -88,7 +88,7 @@ docker run -v /host/pkgs:/opt/install/pkgs <image> python
    ```
 
 7. 单个 wheel 安装失败 → 打印 ERROR，**继续装下一个**；结束时打印汇总（成功 N / 失败 M）；存在失败则 `exit 1`
-8. 日志前缀 `[install-pkgs]`，正常信息走 stdout，错误走 stderr
+8. 日志前缀 `[install-pkgs]`，**全部走 stderr** —— 容器的 stdout 是使用方采集的数据通道，必须保持干净
 9. 脚本自身 `set -uo pipefail`（**不加 `-e`**），保证单个包失败不中断循环；数组展开依赖 `shopt -s nullglob` 处理空目录
 
 参考实现：
@@ -107,7 +107,7 @@ set -uo pipefail
 PKGS_DIR="${1:-${RUNTIME_PKGS_DIR:-/opt/install/pkgs}}"
 PIP_BIN="${PIP_BIN:-pip}"
 
-log() { printf '[install-pkgs] %s\n' "$*"; }
+log() { printf '[install-pkgs] %s\n' "$*" >&2; }
 err() { printf '[install-pkgs] ERROR: %s\n' "$*" >&2; }
 
 if [ ! -d "$PKGS_DIR" ]; then
@@ -136,7 +136,7 @@ for wheel in "${wheels[@]}"; do
 	name="$(basename "$wheel")"
 	log "installing ${name}"
 	if "$PIP_BIN" install --no-index --no-cache-dir --disable-pip-version-check \
-			--find-links="$PKGS_DIR" "$wheel"; then
+			--only-binary=:all: --find-links="$PKGS_DIR" "$wheel"; then
 		ok=$((ok + 1))
 	else
 		err "failed to install ${name}"
@@ -164,7 +164,7 @@ INSTALL_PKGS_BIN="${INSTALL_PKGS_BIN:-/usr/local/bin/install-pkgs.sh}"
 skip="$(printf '%s' "${RUNTIME_SKIP_INSTALL:-0}" | tr '[:upper:]' '[:lower:]')"
 case "$skip" in
 1 | true | yes | on)
-	printf '[runtime-entrypoint] RUNTIME_SKIP_INSTALL set, skipping package installation\n'
+	printf '[runtime-entrypoint] RUNTIME_SKIP_INSTALL set, skipping package installation\n' >&2
 	;;
 *)
 	if ! "$INSTALL_PKGS_BIN"; then
@@ -264,6 +264,20 @@ CMD ["python"]
 ```
 
 测试脚本只依赖 bash 与 coreutils，不需要 Docker，因此这一步在 GitHub 托管 runner 上秒级完成。
+
+改动五（实施时补充），在测试步骤之前加一个**秒级预检**：两个脚本由 `Dockerfile_runtime`
+的 step 7 复制进镜像，若 `.dockerignore` 的放行规则写错，只有等镜像构建（约 14 分钟）
+跑完才会报 `COPY failed`。预检用 `FROM scratch` 的极小构建，几秒内就能确认两个脚本
+确实在构建上下文里：
+
+```yaml
+      - name: Preflight runtime scripts in build context
+        run: |
+          cp Dockerfile_runtime.dockerignore .dockerignore
+          trap 'rm -f .dockerignore' EXIT
+          printf 'FROM scratch\nCOPY scripts/install-pkgs.sh /a\nCOPY scripts/runtime-entrypoint.sh /b\n' \
+            | docker buildx build -f - .
+```
 
 ## 7. 数据流
 
