@@ -37,7 +37,9 @@ lean **runtime image** for sandbox execution environments:
 - Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / pyarrow /
   python-docx / python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib /
   PyMuPDF / SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl / cryptography ...),
-  Node.js 22, Playwright + Chromium
+  Node.js 22
+- LibreOffice: `soffice --headless` converts office documents (docx/xlsx/pptx
+  -> pdf); the Python UNO bridge is importable from `/usr/bin/python3.11`
 - Chinese fonts: installed under `/usr/share/fonts/chinese`, so matplotlib / PIL
   can render Chinese text out of the box
 - Entry point: `python` (starts a REPL with no arguments)

@@ -106,7 +106,7 @@ jobs:
             ${{ steps.meta.outputs.image }}:latest
           labels: |
             org.opencontainers.image.title=opensandbox-runtime
-            org.opencontainers.image.description=Minimal runtime image with Python 3.12, Node.js 22 and Playwright Chromium
+            org.opencontainers.image.description=Minimal runtime image with Python 3.12 and Node.js 22
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
@@ -138,7 +138,7 @@ jobs:
           outputs: type=tar,dest=opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar
           labels: |
             org.opencontainers.image.title=opensandbox-runtime
-            org.opencontainers.image.description=Minimal runtime image with Python 3.12, Node.js 22 and Playwright Chromium
+            org.opencontainers.image.description=Minimal runtime image with Python 3.12 and Node.js 22
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
@@ -196,7 +196,7 @@ jobs:
             - **中文字体**：已装入 `/usr/share/fonts/chinese`，matplotlib / PIL 出图可直接用中文
             - **预装 Python 包**：`numpy`、`pandas`、`openpyxl`、`pyarrow`、`python-docx`、`python-pptx`、`markitdown`、`firecrawl-anydoc`、`Pillow`、`matplotlib`、`PyMuPDF`、`PyYAML`、`SQLAlchemy`、`PyMySQL`、`adbc-driver-flightsql`、`gmssl`（国密）、`cryptography`、`requests`、`httpx`、`psutil`、`tqdm` 等
             - **预装 Node.js**：`22.23.5`（LTS，位于 `/opt/node/v22.23.5`，`node`/`npm` 已在 PATH 中）
-            - **预装浏览器**：`playwright` + Chromium（位于 `/opt/ms-playwright`，已随镜像打包，无需运行时下载）
+            - **预装 LibreOffice**：无头模式（`soffice --headless`）可转换 office 文档（docx/xlsx/pptx → pdf）；Python UNO 桥接在 `/usr/bin/python3.11` 下可用
           generate_release_notes: true
           files: opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
         env:
