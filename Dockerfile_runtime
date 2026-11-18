@@ -165,6 +165,31 @@ RUN set -eux; \
     "${UNO_PY}" -c "import uno; print('pyuno OK:', uno.__file__)"; \
     /usr/local/bin/uno-python -c "import uno; print('uno-python OK')"
 
+# 9. WeasyPrint (HTML/CSS -> PDF).
+#    * The Debian `weasyprint` package is bound to the distro's Python (3.13
+#      on trixie), so its module cannot be imported by the image's 3.12 — the
+#      same ABI lock as the pyuno bridge. WeasyPrint itself is pure Python,
+#      so the image's own 3.12 takes the module from PyPI (see
+#      requirements.txt) and only the native side (pango, fontconfig, the
+#      MIME database) has to come from apt.
+#    * The pip console script lands in /usr/local/bin, which precedes
+#      /usr/bin on PATH, so `weasyprint in.html out.pdf` runs under 3.12.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        weasyprint \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        shared-mime-info \
+    ; \
+    rm -rf /var/lib/apt/lists/*; \
+    python -c "import weasyprint; print('weasyprint OK:', weasyprint.__version__)"; \
+    weasyprint --version; \
+    printf '<html><body><h1>weasyprint smoke test</h1></body></html>' > /tmp/smoke.html; \
+    weasyprint /tmp/smoke.html /tmp/smoke.pdf; \
+    test -s /tmp/smoke.pdf; \
+    rm -f /tmp/smoke.html /tmp/smoke.pdf
+
 WORKDIR /workspace
 
 ENTRYPOINT ["/usr/local/bin/runtime-entrypoint.sh"]

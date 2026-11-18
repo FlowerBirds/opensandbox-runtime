@@ -22,6 +22,7 @@ python-pptx>=0.6      # PowerPoint (.pptx)
 markitdown[all]>=0.1  # Office/PDF/Image/Audio/Email -> Markdown (全部可选依赖)
 firecrawl-anydoc>=0.2 # doc/docx/odt/rtf/epub/pdf/演示/表格/csv -> Markdown
 PyMuPDF>=1.24         # PDF 解析 / 渲染 (fitz), 比 pdfminer.six 快
+weasyprint>=62.3      # HTML/CSS -> PDF 渲染 (pango 排版, 纯 Python, 原生依赖由 apt 提供)
 PyYAML                # YAML config files
 
 # --- Database ---

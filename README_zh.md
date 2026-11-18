@@ -32,11 +32,14 @@
 除了上面这个多语言 Code Interpreter 镜像，本仓库还构建一个精简的 **runtime 镜像**，
 用于沙箱执行环境：
 
-- 基础镜像：`python:3.12-slim`（Debian 12）
+- 基础镜像：`python:3.12-slim`（Debian 13 trixie）
 - 预装：Python 3.12 常用包（numpy / pandas / openpyxl / pyarrow / python-docx /
   python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib / PyMuPDF /
-  SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl 国密 / cryptography 等）、
+  weasyprint / SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl 国密 /
+  cryptography 等）、
   Node.js 22
+- WeasyPrint：HTML/CSS → PDF 渲染（`weasyprint in.html out.pdf`），模块在镜像自带的
+  Python 3.12 下可直接 `import weasyprint`
 - LibreOffice：无头模式（`soffice --headless`）可转换 office 文档（docx/xlsx/pptx →
   pdf）；Python UNO 桥接用 `/usr/local/bin/uno-python` 调用
 - 中文字体：已装入 `/usr/share/fonts/chinese`，matplotlib / PIL 出图可直接用中文

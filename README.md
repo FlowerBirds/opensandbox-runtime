@@ -33,11 +33,14 @@ The image comes pre-installed with the following languages and versions:
 Besides the multi-language Code Interpreter image above, this repository also builds a
 lean **runtime image** for sandbox execution environments:
 
-- Base image: `python:3.12-slim` (Debian 12)
+- Base image: `python:3.12-slim` (Debian 13 trixie)
 - Preinstalled: common Python 3.12 packages (numpy / pandas / openpyxl / pyarrow /
   python-docx / python-pptx / markitdown / firecrawl-anydoc / Pillow / matplotlib /
-  PyMuPDF / SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl / cryptography ...),
+  PyMuPDF / weasyprint / SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl /
+  cryptography ...),
   Node.js 22
+- WeasyPrint: renders HTML/CSS to PDF (`weasyprint in.html out.pdf`); the module
+  is importable from the image's own Python 3.12
 - LibreOffice: `soffice --headless` converts office documents (docx/xlsx/pptx
   -> pdf); the Python UNO bridge runs via `/usr/local/bin/uno-python`
 - Chinese fonts: installed under `/usr/share/fonts/chinese`, so matplotlib / PIL
