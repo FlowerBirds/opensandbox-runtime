@@ -103,10 +103,14 @@ RUN chmod +x /usr/local/bin/install-pkgs.sh /usr/local/bin/runtime-entrypoint.sh
 #    downloading at build time keeps the zip out of the build context and out
 #    of git. Override CHINESE_FONTS_URL via --build-arg to point at a mirror.
 #
-#    mkfontscale/mkfontdir/fc-cache come from the fontconfig package, which is
-#    the Debian equivalent of the `yum install mkfontscale / fontconfig` route
-#    (this image is Debian-based, not RPM-based). The tools are on PATH
-#    already, so no `source /etc/profile` is needed.
+#    fc-cache comes from the fontconfig package, which is the Debian
+#    equivalent of the `yum install mkfontscale / fontconfig` route (this
+#    image is Debian-based, not RPM-based). The tools are on PATH already, so
+#    no `source /etc/profile` is needed.
+#    Only fc-cache is called: Debian 13 (trixie) dropped mkfontscale and
+#    mkfontdir from the fontconfig package, and they only generate the
+#    legacy fonts.dir/fonts.scale files that pre-1990s X clients look for —
+#    fontconfig itself reads the cache fc-cache writes.
 ARG CHINESE_FONTS_URL=https://github.com/FlowerBirds/opensandbox-runtime/releases/download/Chinese_fonts/Chinese_fonts.zip
 RUN set -eux; \
     apt-get update && apt-get install -y --no-install-recommends fontconfig; \
@@ -121,8 +125,6 @@ RUN set -eux; \
         echo "no font files found in ${CHINESE_FONTS_URL}" >&2; exit 1; \
     fi; \
     cd /usr/share/fonts/chinese; \
-    mkfontscale; \
-    mkfontdir; \
     fc-cache -fv
 
 # 8. LibreOffice and the Python UNO bridge.
@@ -134,9 +136,12 @@ RUN set -eux; \
 #    * --no-install-recommends drops the language packs and the
 #      Java/Basic/JavaScript script providers; the Python script provider is
 #      added explicitly because python3-uno needs it for the bridge to work.
-#    * python3-uno is built against Debian's Python 3.11 and pulls it in, so
-#      `import uno` only works under /usr/bin/python3.11. The image's default
-#      python stays 3.12 (/usr/local/bin/python3).
+#    * python3-uno is compiled against the distro's own Python (Debian 13
+#      ships 3.13, Debian 12 ships 3.11), never against the image's 3.12:
+#      pyuno is a CPython extension module and its ABI is version-locked.
+#      So the interpreter that can `import uno` is derived from the package
+#      dependency at build time and exposed as /usr/local/bin/uno-python.
+#      The image's default python stays 3.12 (/usr/local/bin/python3).
 #    * The fonts are the metric-compatible ones for MS Office documents
 #      (Carlito/Caladea for Calibri/Cambria, Liberation for Arial/Times).
 RUN set -eux; \
@@ -146,13 +151,19 @@ RUN set -eux; \
         libreoffice-script-provider-python \
         python3-uno \
         fonts-dejavu-core \
-        fonts-liberation2 \
+        fonts-liberation \
         fonts-crosextra-carlito \
         fonts-crosextra-caladea \
     ; \
     rm -rf /var/lib/apt/lists/*; \
+    UNO_PY="/usr/bin/$(dpkg-query -W -f='${Depends}' python3-uno \
+        | tr ' ,' '\n\n' | grep -oE '^python3\.[0-9]+' | head -n1)"; \
+    test -f "${UNO_PY}"; \
+    printf '#!/bin/sh\nexec %s "$@"\n' "${UNO_PY}" > /usr/local/bin/uno-python; \
+    chmod +x /usr/local/bin/uno-python; \
     HOME=/root timeout 120 soffice --version; \
-    /usr/bin/python3.11 -c "import uno; print('pyuno OK:', uno.__file__)"
+    "${UNO_PY}" -c "import uno; print('pyuno OK:', uno.__file__)"; \
+    /usr/local/bin/uno-python -c "import uno; print('uno-python OK')"
 
 WORKDIR /workspace
 

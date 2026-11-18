@@ -38,7 +38,7 @@
   SQLAlchemy / PyMySQL / adbc-driver-flightsql / gmssl 国密 / cryptography 等）、
   Node.js 22
 - LibreOffice：无头模式（`soffice --headless`）可转换 office 文档（docx/xlsx/pptx →
-  pdf）；Python UNO 桥接在 `/usr/bin/python3.11` 下可用
+  pdf）；Python UNO 桥接用 `/usr/local/bin/uno-python` 调用
 - 中文字体：已装入 `/usr/share/fonts/chinese`，matplotlib / PIL 出图可直接用中文
 - 入口：`python`（无参数启动进入 REPL）
 - 多架构：`linux/amd64` + `linux/arm64`

@@ -196,7 +196,7 @@ jobs:
             - **中文字体**：已装入 `/usr/share/fonts/chinese`，matplotlib / PIL 出图可直接用中文
             - **预装 Python 包**：`numpy`、`pandas`、`openpyxl`、`pyarrow`、`python-docx`、`python-pptx`、`markitdown`、`firecrawl-anydoc`、`Pillow`、`matplotlib`、`PyMuPDF`、`PyYAML`、`SQLAlchemy`、`PyMySQL`、`adbc-driver-flightsql`、`gmssl`（国密）、`cryptography`、`requests`、`httpx`、`psutil`、`tqdm` 等
             - **预装 Node.js**：`22.23.5`（LTS，位于 `/opt/node/v22.23.5`，`node`/`npm` 已在 PATH 中）
-            - **预装 LibreOffice**：无头模式（`soffice --headless`）可转换 office 文档（docx/xlsx/pptx → pdf）；Python UNO 桥接在 `/usr/bin/python3.11` 下可用
+            - **预装 LibreOffice**：无头模式（`soffice --headless`）可转换 office 文档（docx/xlsx/pptx → pdf）；Python UNO 桥接用 `/usr/local/bin/uno-python` 调用
           generate_release_notes: true
           files: opensandbox-runtime-${{ steps.meta.outputs.tag }}.tar.zst
         env:
